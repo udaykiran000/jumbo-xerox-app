@@ -42,7 +42,7 @@ app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/payments", require("./routes/paymentRoutes"));
 
 // --- CATCH-ALL ROUTE FOR FRONTEND ---
-app.get("*", (req, res) => {
+app.get("(.*)", (req, res) => {
   // 1. API route
   if (req.path.startsWith("/api")) {
     return res.status(404).json({
