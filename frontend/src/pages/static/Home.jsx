@@ -1,288 +1,327 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
-  CloudUpload,
-  IndianRupee,
-  Truck,
-  ArrowRight,
-  Printer,
-  Star,
-  CheckCircle,
-  Zap,
-} from "lucide-react";
+  FiCheckCircle,
+  FiTruck,
+  FiRefreshCw,
+  FiPhone,
+  FiMail,
+  FiMapPin,
+} from "react-icons/fi";
 
-// --- Animation Variants ---
-const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
-  },
-};
+// --- Swiper (For Decoratives) ---
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Navigation } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
 
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-    },
-  },
-};
+// --- IMAGE IMPORTS ---
+// Hero Backgrounds (1-7)
+import h1 from "../../assets/1.jpg";
+import h2 from "../../assets/2.jpg";
+import h3 from "../../assets/3.jpg";
+import h4 from "../../assets/4.jpg";
+import h5 from "../../assets/5.jpg";
+import h6 from "../../assets/6.jpg";
+import h7 from "../../assets/7.jpg";
+
+// Categories
+import catA4 from "../../assets/a4.jpg";
+import catPlan from "../../assets/Plan-Printing.jpg";
+import catFlyer from "../../assets/flyers.jpg";
+import catBcard from "../../assets/bcard.jpg";
+import catSticker from "../../assets/poster.jpg";
+
+// Business Needs
+import biz1 from "../../assets/prescription-pads.webp";
+import biz2 from "../../assets/bill-books.webp";
+import biz3 from "../../assets/letterheads.webp";
+import biz4 from "../../assets/cash-receipts.webp";
+import biz5 from "../../assets/vouchers.webp";
+import biz6 from "../../assets/envelopes.webp";
+import biz7 from "../../assets/mouse-pads.webp";
+import biz8 from "../../assets/keychains.webp";
+import biz9 from "../../assets/metal.webp";
+import biz10 from "../../assets/name-pencils.webp";
+
+// Decoratives
+import s1 from "../../assets/slide1.webp";
+import s2 from "../../assets/slide2.webp";
+import s3 from "../../assets/slide3.webp";
+import s4 from "../../assets/slide4.jpg";
+import s5 from "../../assets/slide5.webp";
+import s6 from "../../assets/slide6.webp";
 
 const Home = () => {
+  const [currentHero, setCurrentHero] = useState(0);
+  const heroImages = [h1, h2, h3, h4, h5, h6, h7];
+
+  // 1. Hero Auto-Fade Logic
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHero((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroImages.length]);
+
+  // 2. WhatsApp Widget Logic
+  useEffect(() => {
+    const url = "https://cdn.waplus.io/waplus-crm/settings/ossembed.js";
+    const s = document.createElement("script");
+    s.type = "text/javascript";
+    s.async = true;
+    s.src = url;
+
+    // Ekkada missing fields (welcomeText, messageText, etc.) add chesanu
+    const options = {
+      enabled: true,
+      chatButtonSetting: {
+        backgroundColor: "#16BE45",
+        ctaText: "Message Us",
+        borderRadius: "25",
+        marginLeft: "0",
+        marginBottom: "50",
+        marginRight: "50",
+        position: "right",
+        phoneNumber: "919441081125",
+        welcomeText: "Hi there!", // Ee field missing valla error ravachu
+        messageText: "Hello, I have a query about Jumbo Xerox",
+      },
+      brandSetting: {
+        brandName: "Jumbo Xerox",
+        brandSubTitle: "Typically replies in a few minutes",
+        brandImg: "https://jumboxerox.com/assets/icon.png",
+        welcomeText: "Hi there!\nHow can I help you?",
+        messageText: "Hello, I have a query about Jumbo Xerox",
+        backgroundColor: "#075e54",
+        ctaText: "Start Chat",
+        borderRadius: "25",
+        autoShow: false,
+        phoneNumber: "919441081125",
+      },
+    };
+
+    s.onload = () => {
+      // Check if the function exists before calling
+      if (typeof window.CreateWhatsappChatWidget === "function") {
+        window.CreateWhatsappChatWidget(options);
+      }
+    };
+
+    document.body.appendChild(s);
+
+    return () => {
+      if (document.body.contains(s)) {
+        document.body.removeChild(s);
+      }
+    };
+  }, []);
+
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 font-sans overflow-x-hidden">
-      {/* 1. Background Visuals (Blobs) */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px]" />
-      </div>
+    <div className="min-h-screen bg-white font-sans text-slate-700 overflow-x-hidden">
+      <section className="relative w-full h-[450px] md:h-[550px] bg-slate-900 overflow-hidden">
+        {heroImages.map((img, idx) => (
+          <div
+            key={idx}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              idx === currentHero ? "opacity-93" : "opacity-0"
+            }`}
+            style={{
+              backgroundImage: `url(${img})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+        ))}
 
-      {/* 2. Hero Section */}
-      <section className="relative max-w-7xl mx-auto px-6 pt-32 pb-20 text-center">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-        >
-          <motion.div
-            variants={fadeInUp}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-cyan-400 text-sm font-semibold mb-8 shadow-xl"
-          >
-            <Zap size={16} className="fill-current" /> Next-Gen Online Printing
-          </motion.div>
-
-          <motion.h1
-            variants={fadeInUp}
-            className="text-5xl md:text-8xl font-black leading-[1.1] mb-8 tracking-tight"
-          >
-            Print Anything. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500">
-              Delivered Anywhere.
-            </span>
-          </motion.h1>
-
-          <motion.p
-            variants={fadeInUp}
-            className="text-lg md:text-xl text-slate-400 mb-12 max-w-3xl mx-auto leading-relaxed"
-          >
-            Join the smart way of printing. Upload documents from your phone,
-            choose custom options, and get them delivered to your door.
-          </motion.p>
-
-          <motion.div
-            variants={fadeInUp}
-            className="flex justify-center gap-5 flex-wrap"
-          >
-            <Link
-              to="/quick-print"
-              className="group relative px-10 py-4 rounded-2xl font-bold bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-[0_0_30px_rgba(37,99,235,0.4)] flex items-center gap-2 active:scale-95"
-            >
-              Start Printing{" "}
-              <ArrowRight
-                size={20}
-                className="group-hover:translate-x-1 transition-transform"
-              />
-            </Link>
-            <Link
-              to="/services"
-              className="px-10 py-4 rounded-2xl font-bold border border-slate-700 text-slate-200 hover:bg-white/5 transition-all active:scale-95"
-            >
-              Check Prices
-            </Link>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* 3. Stats Section */}
-      <motion.section
-        initial={{ opacity: 0, scale: 0.95 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.8 }}
-        className="max-w-7xl mx-auto px-6 py-10"
-      >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 bg-white/5 backdrop-blur-md rounded-[3rem] p-10 border border-white/10 shadow-2xl">
-          <StatBox number="10k+" label="Pages Printed" />
-          <StatBox number="2k+" label="Happy Students" />
-          <StatBox number="500+" label="Daily Deliveries" />
-          <StatBox number="4.9/5" label="User Rating" />
+        {/* Indicators */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-20">
+          {heroImages.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentHero(i)}
+              className={`h-1.5 rounded-full transition-all ${
+                i === currentHero ? "bg-white w-8" : "bg-white/40 w-2"
+              }`}
+            />
+          ))}
         </div>
-      </motion.section>
-
-      {/* 4. Features Section */}
-      <section className="relative max-w-7xl mx-auto px-6 py-24">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeInUp}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl md:text-5xl font-black mb-6 tracking-tight">
-            Features You'll Love
-          </h2>
-          <div className="w-24 h-2 bg-gradient-to-r from-cyan-500 to-blue-500 mx-auto rounded-full" />
-        </motion.div>
-
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={staggerContainer}
-          className="grid md:grid-cols-3 gap-8"
-        >
-          <FeatureCard
-            icon={<CloudUpload size={32} className="text-cyan-400" />}
-            title="Instant Upload"
-            desc="Easily upload PDFs or Word files from WhatsApp or your File Manager."
-          />
-          <FeatureCard
-            icon={<IndianRupee size={32} className="text-emerald-400" />}
-            title="Bulk Discounts"
-            desc="More pages, less price. Special rates for study materials & notes."
-          />
-          <FeatureCard
-            icon={<Truck size={32} className="text-blue-400" />}
-            title="Fast Delivery"
-            desc="Get your prints within hours. We deliver to hostels, offices, and homes."
-          />
-        </motion.div>
       </section>
 
-      {/* 5. Trust Section / Testimonials */}
-      <section className="bg-white/[0.02] border-y border-white/5 py-24 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-            >
-              <h2 className="text-4xl md:text-5xl font-black mb-8 leading-tight">
-                Trusted by thousands of students.
-              </h2>
-              <div className="space-y-4">
-                <TrustItem text="High-Quality Laser Printing" />
-                <TrustItem text="Secure Document Handling" />
-                <TrustItem text="Easy Order Tracking" />
-              </div>
-            </motion.div>
-
-            <div className="grid gap-6">
-              <TestimonialCard
-                name="Rohan Varma"
-                role="Engineering Student"
-                text="Saved my time during exam submissions! Best online printing service."
-              />
-              <TestimonialCard
-                name="Sneha Reddy"
-                role="Project Manager"
-                text="Very professional and transparent pricing. Highly recommended."
-              />
+      {/* STEP 3: BLUE ANNOUNCEMENT TICKER (Exact Screenshot Position) */}
+      <section className="bg-blue-700 text-white py-4 overflow-hidden shadow-xl z-30 relative border-b border-blue-800">
+        <div className="max-w-7xl mx-auto px-4 flex items-center gap-6">
+          <div className="flex-shrink-0 font-black text-sm italic tracking-tighter bg-white/20 px-4 py-1.5 rounded-lg border border-white/10">
+            📢 ANNOUNCEMENTS:
+          </div>
+          <div className="flex-grow overflow-hidden relative h-6 flex items-center">
+            <div className="flex gap-16 animate-marquee whitespace-nowrap absolute text-[11px] font-extrabold uppercase tracking-wide">
+              <span>
+                ✨ FAST TURNAROUND TIME - GET YOUR PRINTS IN 24 HOURS!
+              </span>
+              <span>🎁 FIRST-TIME USERS GET 10% OFF ON ALL ORDERS!</span>
+              <span>📦 FREE SHIPPING ON BULK ORDERS ABOVE ₹2000!</span>
+              <span>
+                🏆 HIGH-QUALITY PRINTING WITH GUARANTEED SATISFACTION!
+              </span>
+              <span>
+                ✨ FAST TURNAROUND TIME - GET YOUR PRINTS IN 24 HOURS!
+              </span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 6. Footer Call to Action */}
-      <section className="max-w-5xl mx-auto px-6 py-32">
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          transition={{ type: "spring", stiffness: 300 }}
-          className="bg-gradient-to-br from-blue-700 to-indigo-800 rounded-[3rem] p-12 text-center shadow-[0_20px_50px_rgba(37,99,235,0.3)] relative overflow-hidden"
-        >
-          <div className="relative z-10">
-            <h2 className="text-4xl md:text-6xl font-black text-white mb-8 tracking-tighter">
-              Ready to Start?
-            </h2>
-            <Link
-              to="/register"
-              className="inline-block bg-white text-blue-700 px-12 py-5 rounded-2xl font-black text-xl hover:shadow-2xl transition-all active:scale-95"
+      {/* --- CATEGORIES SECTION --- */}
+      <section className="py-20 px-4 max-w-7xl mx-auto text-center">
+        <h2 className="text-4xl font-black mb-2 text-slate-800 uppercase tracking-tighter">
+          Our Categories
+        </h2>
+        <p className="text-slate-400 mb-16 font-bold text-xs uppercase tracking-widest">
+          Choose what you need to print
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10">
+          {[
+            { n: "Document Print A4", i: catA4 },
+            { n: "Plan Printing", i: catPlan },
+            { n: "Flyers", i: catFlyer },
+            { n: "Business Cards", i: catBcard },
+            { n: "Sticker Printing", i: catSticker },
+          ].map((cat, i) => (
+            <div
+              key={i}
+              className="flex flex-col items-center group cursor-pointer"
             >
-              Create Account — Free
-            </Link>
-          </div>
-          <Printer className="absolute bottom-[-20px] right-[-20px] text-white/10 w-64 h-64 rotate-12" />
-        </motion.div>
+              <div className="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-[6px] border-slate-50 shadow-2xl group-hover:border-indigo-100 transition-all duration-500 bg-slate-100">
+                <img
+                  src={cat.i}
+                  alt={cat.n}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+              </div>
+              <p className="mt-6 font-black text-xs text-slate-700 uppercase tracking-tighter">
+                {cat.n}
+              </p>
+            </div>
+          ))}
+        </div>
       </section>
 
-      {/* Footer info */}
-      <footer className="py-10 text-center text-slate-500 border-t border-white/5">
-        <p>© {new Date().getFullYear()} Jumbo Xerox. All rights reserved.</p>
-      </footer>
+      {/* --- INFO GRID (Alerts) --- */}
+      <section className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 shadow-sm border-y border-slate-50">
+        <div className="bg-indigo-50 p-8 border-r border-slate-100 flex items-center gap-5">
+          <FiMapPin className="text-indigo-600 w-8 h-8" />
+          <div>
+            <p className="text-[11px] font-black text-indigo-900 uppercase">
+              Store Pickup
+            </p>
+            <p className="text-xs text-slate-500 font-medium tracking-tight leading-tight mt-1">
+              Available only at Guntur Branch
+            </p>
+          </div>
+        </div>
+        <div className="bg-yellow-50 p-8 border-r border-slate-100 flex items-center gap-5">
+          <FiPhone className="text-yellow-600 w-8 h-8" />
+          <div>
+            <p className="text-[11px] font-black text-yellow-900 uppercase">
+              Bulk Orders
+            </p>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              +91 9441081125
+            </p>
+          </div>
+        </div>
+        <div className="bg-emerald-50 p-8 flex items-center gap-5">
+          <FiMail className="text-emerald-600 w-8 h-8" />
+          <div>
+            <p className="text-[11px] font-black text-emerald-900 uppercase">
+              Order Related
+            </p>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              info@jumboxerox.com
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* --- BUSINESS NEEDS (GRID) --- */}
+      <section className="py-24 bg-slate-50 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <h2 className="text-4xl font-black mb-16 uppercase tracking-[0.2em] text-slate-800">
+            Business Needs
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+            {[
+              { n: "Prescription Pads", i: biz1 },
+              { n: "Bill Books", i: biz2 },
+              { n: "Letterheads", i: biz3 },
+              { n: "Cash Receipts", i: biz4 },
+              { n: "Payment Vouchers", i: biz5 },
+              { n: "Envelopes", i: biz6 },
+              { n: "Mousepads", i: biz7 },
+              { n: "Pen & Keychain", i: biz8 },
+              { n: "Metal Pens", i: biz9 },
+              { n: "Name Pencils", i: biz10 },
+            ].map((item, i) => (
+              <div
+                key={i}
+                className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl transition-all group"
+              >
+                <div className="h-44 bg-slate-50 rounded-xl mb-4 overflow-hidden">
+                  <img
+                    src={item.i}
+                    alt={item.n}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                  />
+                </div>
+                <p className="font-bold text-[10px] uppercase text-slate-600 tracking-tighter">
+                  {item.n}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* --- HOME DECORATIVES (SWIPER) --- */}
+      <section className="py-24 bg-white px-4 border-t border-slate-100">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-4xl font-black text-center mb-16 uppercase tracking-[0.2em] text-slate-800">
+            Home Decoratives
+          </h2>
+          <div className="px-10">
+            <Swiper
+              modules={[Autoplay, Navigation]}
+              autoplay={{ delay: 3000 }}
+              navigation={true}
+              loop={true}
+              spaceBetween={20}
+              breakpoints={{
+                640: { slidesPerView: 1 },
+                768: { slidesPerView: 2 },
+                1024: { slidesPerView: 4 },
+              }}
+              className="decor-swiper pb-10"
+            >
+              {[s1, s2, s3, s4, s5, s6].map((img, idx) => (
+                <SwiperSlide key={idx}>
+                  <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden group">
+                    <div className="h-64 overflow-hidden relative">
+                      <img
+                        src={img}
+                        alt="decor"
+                        className="w-full h-full object-cover group-hover:scale-110 transition duration-700"
+                      />
+                    </div>
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
-
-/* --- Sub Components --- */
-
-function StatBox({ number, label }) {
-  return (
-    <div className="text-center">
-      <h4 className="text-3xl font-black text-white">{number}</h4>
-      <p className="text-sm text-slate-500 mt-1 uppercase tracking-widest">
-        {label}
-      </p>
-    </div>
-  );
-}
-
-function FeatureCard({ icon, title, desc }) {
-  return (
-    <motion.div
-      variants={fadeInUp}
-      whileHover={{ y: -12 }}
-      className="group bg-white/5 p-10 rounded-[2.5rem] border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-500"
-    >
-      <div className="mb-6 p-4 bg-slate-900 rounded-2xl inline-block border border-white/5 group-hover:scale-110 transition-transform duration-500">
-        {icon}
-      </div>
-      <h3 className="text-2xl font-bold mb-4">{title}</h3>
-      <p className="text-slate-400 leading-relaxed text-lg">{desc}</p>
-    </motion.div>
-  );
-}
-
-function TrustItem({ text }) {
-  return (
-    <div className="flex items-center gap-3 text-lg font-medium text-slate-300">
-      <CheckCircle className="text-cyan-500" size={24} />
-      <span>{text}</span>
-    </div>
-  );
-}
-
-function TestimonialCard({ name, role, text }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 30 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6 }}
-      className="bg-white/5 p-8 rounded-3xl border border-white/5 hover:bg-white/10 transition-colors"
-    >
-      <div className="flex gap-1 text-yellow-500 mb-4">
-        {[...Array(5)].map((_, i) => (
-          <Star key={i} size={16} fill="currentColor" />
-        ))}
-      </div>
-      <p className="text-slate-200 italic mb-6 leading-relaxed">"{text}"</p>
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-black text-xl shadow-lg">
-          {name[0]}
-        </div>
-        <div>
-          <h5 className="font-bold text-slate-100">{name}</h5>
-          <p className="text-sm text-slate-500">{role}</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 export default Home;

@@ -10,44 +10,33 @@ async function mergeChunks() {
   const hash = crypto.createHash("sha256");
 
   try {
+    // totalChunks total count (0, 1, 2, 3...)
     for (let i = 0; i < totalChunks; i++) {
       const chunkPath = path.join(tempDir, `part_${i}`);
 
       if (!fs.existsSync(chunkPath)) {
-        throw new Error(`Chunk missing: part_${i}`);
+        throw new Error(
+          `Critical Error: Chunk part_${i} is missing. Merge aborted.`
+        );
       }
 
       const chunkBuffer = fs.readFileSync(chunkPath);
 
-      // Hash update chestunnam (Integrity check)
+      // Binary data ni direct hash and write 
       hash.update(chunkBuffer);
+      writeStream.write(chunkBuffer);
 
-      // Stream dwara file loki rastunnam
-      const readStream = fs.createReadStream(chunkPath);
-      await new Promise((resolve, reject) => {
-        readStream.pipe(writeStream, { end: false });
-        readStream.on("end", resolve);
-        readStream.on("error", reject);
-      });
-
-      // Chunk use ayyaka ventane delete chestunnam
+      // Memory free  chunk ni delete 
       fs.unlinkSync(chunkPath);
     }
 
     writeStream.end();
 
-    // Final SHA-256 Hash digest
-    const finalHash = hash.digest("hex");
-
-    parentPort.postMessage({
-      success: true,
-      hash: finalHash,
+    writeStream.on("finish", () => {
+      parentPort.postMessage({ success: true, hash: hash.digest("hex") });
     });
   } catch (error) {
-    parentPort.postMessage({
-      success: false,
-      error: error.message,
-    });
+    parentPort.postMessage({ success: false, error: error.message });
   }
 }
 

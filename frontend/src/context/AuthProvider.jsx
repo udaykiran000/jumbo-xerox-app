@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "./AuthContext"; // AuthContext ni import chesam
+import { AuthContext } from "./AuthContext"; // AuthContext 
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -20,9 +20,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", token);
     try {
       const decoded = jwtDecode(token);
-      setUser(decoded); // Token lo unna user data set chestundi
+      setUser(decoded); 
 
-      // Role check chesi navigate cheyali
+      // Role check navigate
       if (decoded.role === "admin") {
         navigate("/admin");
       } else {
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
           const decoded = jwtDecode(token);
           const currentTime = Date.now() / 1000;
 
-          // Token expire ayindhemo check chestundi
+          // Token expire check 
           if (decoded.exp && decoded.exp < currentTime) {
             logout();
           } else {

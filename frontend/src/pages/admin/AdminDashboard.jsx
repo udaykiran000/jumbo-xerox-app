@@ -2,236 +2,233 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import {
-  Users,
   ShoppingBag,
-  IndianRupee,
   Activity,
-  TrendingUp,
-  HardDrive,
-  LayoutDashboard,
-  AlertTriangle,
   CheckCircle2,
-  Clock,
+  IndianRupee,
+  Users,
   UserPlus,
-  ShoppingCart,
   ArrowUpRight,
+  ShoppingCart,
+  Clock,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    todayReg: 0,
-    todayOrders: { total: 0, completed: 0, pending: 0 },
-    todayRev: 0,
-    disk: {
-      free: "0 GB",
-      used: "0 GB",
-      total: "0 GB",
-      percentFree: "0%",
-      uploadsSize: "0 MB",
-      isLowSpace: false,
-    },
-    recentActivity: [],
-  });
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data } = await api.get("/admin/stats");
-        setStats(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    fetchDashboardStats();
   }, []);
 
-  const getDiskTheme = (isLow) =>
-    isLow
-      ? "text-red-400 border-red-500/30 bg-red-500/10"
-      : "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
-  const formatTime = (dateString) =>
-    new Date(dateString).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const fetchDashboardStats = async () => {
+    console.log("[DEBUG-UI] Syncing Holistic Admin Stats...");
+    try {
+      const { data } = await api.get("/admin/stats");
+      setStats(data);
+      console.log("[DEBUG-UI] Dashboard Data Synced successfully.");
+    } catch (error) {
+      console.error("[DEBUG-UI-ERR] Dashboard sync failed:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- ACTION: Navigate to Order Details ---
+  const handleActivityClick = (item) => {
+    if (item.type === "order") {
+      console.log(`[DEBUG-NAV] Directing to Order Detail: ${item._id}`);
+      // Passing state to AdminOrders page to auto-open the modal
+      navigate("/admin/orders", { state: { openOrderId: item._id } });
+    } else {
+      navigate("/admin/users");
+    }
+  };
 
   if (loading)
     return (
-      <div className="p-10 flex justify-center text-slate-500 font-bold uppercase tracking-widest">
-        <Activity className="animate-spin mr-2" /> Loading...
+      <div className="h-96 flex flex-col items-center justify-center text-blue-600 gap-4">
+        <Loader2 className="animate-spin" size={32} />
+        <p className="font-black text-[10px] uppercase tracking-[0.4em]">
+          Loading Master Dashboard...
+        </p>
       </div>
     );
 
+  const cards = [
+    {
+      title: "Total Orders",
+      value: stats?.todayOrders?.total || 0,
+      color: "bg-[#7c3aed]",
+      icon: <ShoppingBag size={24} />,
+    },
+    {
+      title: "Active Processing",
+      value: stats?.processing || 0,
+      color: "bg-[#f59e0b]",
+      icon: <Activity size={24} />,
+    },
+    {
+      title: "Completed Today",
+      value: stats?.todayOrders?.completed || 0,
+      color: "bg-[#10b981]",
+      icon: <CheckCircle2 size={24} />,
+    },
+    {
+      title: "Revenue Stream",
+      value: `₹${stats?.totalRev?.toLocaleString()}`,
+      sub: `Today: ₹${stats?.todayRev}`,
+      color: "bg-[#2563eb]",
+      icon: <IndianRupee size={24} />,
+    },
+    {
+      title: "Customer Base",
+      value: stats?.totalUsers || 0,
+      color: "bg-[#8b5cf6]",
+      icon: <Users size={24} />,
+    },
+    {
+      title: "New Registrations",
+      value: stats?.todayReg || 0,
+      color: "bg-[#ec4899]",
+      icon: <UserPlus size={24} />,
+    },
+  ];
+
   return (
-    <div className="p-4 md:p-8 space-y-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="space-y-10 animate-in fade-in duration-700 font-sans">
+      {/* 1. HEADER SECTION (BRIGHT UI) */}
+      <div className="flex justify-between items-end">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <LayoutDashboard className="text-blue-400" size={18} />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-              Live Control Center
-            </p>
-          </div>
-          <h1 className="text-4xl font-black tracking-tight">Dashboard</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600 mb-1">
+            Live Control Center
+          </p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight italic">
+            Admin Dashboard
+          </h1>
         </div>
-        {stats.disk && (
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            onClick={() => navigate("/admin/settings")}
-            className={`cursor-pointer p-5 rounded-[2rem] border transition-all flex items-center gap-5 ${getDiskTheme(
-              stats.disk.isLowSpace
-            )} shadow-2xl`}
-          >
-            <div className="p-3 bg-white/5 rounded-2xl">
-              {stats.disk.isLowSpace ? (
-                <AlertTriangle size={24} className="animate-pulse" />
-              ) : (
-                <HardDrive size={24} />
-              )}
-            </div>
-            <div className="flex flex-col gap-1 w-full min-w-[200px]">
-              <div className="flex justify-between items-center text-[10px] font-black uppercase opacity-70">
-                <p>Uploads Folder</p> <p>System Free</p>
-              </div>
-              <div className="flex justify-between items-baseline">
-                <p className="text-xl font-black">{stats.disk.uploadsSize}</p>
-                <p className="text-sm font-bold opacity-80">
-                  {stats.disk.free}
-                </p>
-              </div>
-              <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden flex">
-                <div
-                  className={`h-full rounded-full ${
-                    stats.disk.isLowSpace ? "bg-red-500" : "bg-emerald-500"
-                  }`}
-                  style={{
-                    width: `${100 - parseFloat(stats.disk.percentFree)}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
+        <div className="hidden md:block text-right">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            Last Sync
+          </p>
+          <p className="text-xs font-bold text-slate-600">
+            {new Date().toLocaleTimeString()}
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {[
-          {
-            title: "Total Customers",
-            value: stats.totalUsers,
-            subtext: `+${stats.todayReg} New Today`,
-            icon: <Users size={20} />,
-            color: "blue",
-          },
-          {
-            title: "Today's Orders",
-            value: stats.todayOrders?.total || 0,
-            subtext: (
-              <div className="flex gap-2 text-[10px] mt-1">
-                <span className="flex items-center text-emerald-400 gap-1">
-                  <CheckCircle2 size={10} /> {stats.todayOrders?.completed} Done
-                </span>
-                <span className="flex items-center text-yellow-400 gap-1">
-                  <Clock size={10} /> {stats.todayOrders?.pending} Pending
-                </span>
-              </div>
-            ),
-            icon: <ShoppingBag size={20} />,
-            color: "indigo",
-          },
-          {
-            title: "Daily Revenue",
-            value: `₹${stats.todayRev}`,
-            subtext: "Updated in real-time",
-            icon: <IndianRupee size={20} />,
-            color: "orange",
-          },
-        ].map((c, i) => (
-          <div
+      {/* 2. RESPONSIVE COLORFUL CARDS (Sync with Image 9) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        {cards.map((card, i) => (
+          <motion.div
             key={i}
-            className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 hover:bg-white/[0.07] transition-all group relative overflow-hidden"
+            whileHover={{ y: -8, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300 }}
+            className={`${card.color} p-8 rounded-[3rem] text-white shadow-2xl shadow-blue-900/10 relative overflow-hidden group cursor-default`}
           >
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-4 bg-slate-900 rounded-2xl border border-white/5 text-white group-hover:scale-110 transition-transform">
-                {c.icon}
+            <div className="relative z-10">
+              <div className="bg-white/20 w-fit p-4 rounded-[1.5rem] mb-6 shadow-inner group-hover:scale-110 transition-transform">
+                {card.icon}
               </div>
-              <TrendingUp
-                size={16}
-                className={`text-${c.color}-500 opacity-50`}
-              />
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">
+                {card.title}
+              </p>
+              <h3 className="text-4xl font-black tracking-tighter">
+                {card.value}
+              </h3>
+              {card.sub && (
+                <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-tight">
+                    {card.sub}
+                  </p>
+                  <ArrowUpRight size={14} className="opacity-50" />
+                </div>
+              )}
             </div>
-            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
-              {c.title}
-            </p>
-            <h3 className="text-4xl font-black tracking-tighter mb-2">
-              {c.value}
-            </h3>
-            <div className="text-slate-400">{c.subtext}</div>
-          </div>
+            {/* Background Aesthetic Blur */}
+            <div className="absolute top-[-10%] right-[-10%] w-48 h-48 bg-white/10 rounded-full blur-[60px] group-hover:bg-white/20 transition-all duration-500" />
+          </motion.div>
         ))}
       </div>
 
-      <div className="bg-white/5 backdrop-blur-xl rounded-[2.5rem] border border-white/10 p-8 shadow-2xl">
-        <h3 className="text-xl font-black mb-6 flex items-center gap-2">
-          <Activity size={20} className="text-blue-400" /> Recent Activity Feed
-        </h3>
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-          {stats.recentActivity &&
+      {/* 3. RECENT ACTIVITY HUB (Actionable UI) */}
+      <div className="bg-white border border-gray-100 rounded-[3rem] overflow-hidden shadow-xl shadow-blue-900/5 animate-in slide-in-from-bottom duration-700">
+        <div className="p-8 md:p-10 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+          <h3 className="font-black text-xl text-slate-800 flex items-center gap-3">
+            <Activity className="text-blue-600" size={22} /> Live Activity
+            Stream
+          </h3>
+          <button
+            onClick={() => navigate("/admin/orders")}
+            className="text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white px-8 py-3 rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
+          >
+            Manage All
+          </button>
+        </div>
+
+        <div className="p-6 md:p-8 space-y-4">
+          {!stats?.recentActivity || stats.recentActivity.length === 0 ? (
+            <div className="p-20 text-center italic text-slate-400 font-bold">
+              No recent activities to show.
+            </div>
+          ) : (
             stats.recentActivity.map((item, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-colors"
+                onClick={() => handleActivityClick(item)}
+                className="flex items-center gap-5 p-6 rounded-[2rem] bg-white border border-gray-100 hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group"
               >
                 <div
-                  className={`p-3 rounded-xl ${
+                  className={`p-4 rounded-2xl shadow-sm group-hover:shadow-lg transition-all ${
                     item.type === "order"
-                      ? "bg-blue-500/10 text-blue-400"
-                      : "bg-purple-500/10 text-purple-400"
+                      ? "bg-blue-50 text-blue-600"
+                      : "bg-purple-50 text-purple-600"
                   }`}
                 >
                   {item.type === "order" ? (
-                    <ShoppingCart size={18} />
+                    <ShoppingCart size={22} />
                   ) : (
-                    <UserPlus size={18} />
+                    <UserPlus size={22} />
                   )}
                 </div>
-                <div className="flex-1">
-                  <p className="font-bold text-sm text-slate-200">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-black text-slate-900 text-base">
+                      {item.type === "order"
+                        ? `${item.user?.name || "Customer"} placed a New Order`
+                        : `${item.name} joined Jumbo Xerox`}
+                    </p>
+                    {!item.isRead && item.type === "order" && (
+                      <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1">
                     {item.type === "order"
-                      ? `${item.user?.name || "Unknown"} placed an order`
-                      : `${item.name} joined Jumbo Xerox`}
-                  </p>
-                  <p className="text-xs text-slate-500 font-medium">
-                    {item.type === "order"
-                      ? `₹${item.totalAmount} • ${item.paymentMethod} • ${item.files.length} Files`
-                      : `Email: ${item.email}`}
+                      ? `Transaction: ₹${item.totalAmount} • ${
+                          item.paymentMethod
+                        } • ID: #${item._id?.slice(-6).toUpperCase()}`
+                      : `Identity Verified: ${item.email}`}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                    {formatTime(item.activityTime)}
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest group-hover:text-blue-600 transition-colors">
+                    {new Date(item.activityTime).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
-                  {item.type === "order" && (
-                    <button
-                      onClick={() => navigate("/admin/orders")}
-                      className="text-[10px] text-blue-400 hover:underline mt-1"
-                    >
-                      View
-                    </button>
-                  )}
+                  <div className="flex justify-end mt-1">
+                    <ArrowUpRight
+                      size={16}
+                      className="text-slate-200 group-hover:text-blue-500 transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-all"
+                    />
+                  </div>
                 </div>
               </div>
-            ))}
-          {(!stats.recentActivity || stats.recentActivity.length === 0) && (
-            <p className="text-center text-slate-500 italic">
-              No recent activity.
-            </p>
+            ))
           )}
         </div>
       </div>

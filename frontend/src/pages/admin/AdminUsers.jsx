@@ -1,172 +1,254 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import {
   Users,
-  Mail,
-  Calendar,
-  Shield,
+  UserPlus,
   Search,
-  UserCheck,
   Trash2,
+  ShieldAlert,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    isActive: true,
+  });
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
-  const fetchUsers = async () => {
+    fetchUsers(currentPage);
+  }, [currentPage]);
+
+  const fetchUsers = async (page) => {
     try {
-      const { data } = await api.get("/admin/users");
-      setUsers(data);
+      setLoading(true);
+      const { data } = await api.get(`/admin/users?page=${page}&limit=10`);
+      setUsers(data.users);
+      setTotalPages(data.totalPages);
     } catch (e) {
-      toast.error("Users load failed");
+      toast.error("Load failed");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = async (id, role) => {
-    if (role === "admin")
-      return toast.error("Admin account cannot be deleted!");
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try {
-        await api.delete(`/admin/user/${id}`);
-        toast.success("User deleted successfully");
-        fetchUsers();
-      } catch (e) {
-        toast.error(e.response?.data?.message || "Delete failed");
-      }
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.post("/admin/users", newUser);
+      toast.success("Account Created!");
+      setNewUser({ name: "", email: "", password: "", isActive: true });
+      fetchUsers(1);
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Add failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleToggleStatus = async (id) => {
+    try {
+      const { data } = await api.patch(`/admin/user/toggle/${id}`);
+      setUsers(
+        users.map((u) => (u._id === id ? { ...u, isActive: data.isActive } : u))
+      );
+      toast.success(`User updated!`);
+    } catch (e) {
+      toast.error("Update failed");
+    }
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight flex items-center gap-3">
-            <Users className="text-cyan-400" /> User Management
-          </h2>
-          <p className="text-slate-500 text-sm">
-            Directory of all registered customers and staff.
-          </p>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* RESPONSIVE HEADER & FORM */}
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 md:p-4 bg-blue-50 text-blue-600 rounded-xl md:rounded-2xl">
+            <Users size={28} />
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+              Users
+            </p>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900">
+              Directory
+            </h1>
+          </div>
         </div>
-        <div className="relative group">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search users..."
-            className="bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-6 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full md:w-80 transition-all placeholder:text-slate-600 shadow-xl"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+
+        {/* ADD USER CARD (Single col on mobile) */}
+        <div className="w-full lg:w-auto bg-white p-5 md:p-6 rounded-[2rem] border border-gray-200 shadow-sm flex-1 max-w-2xl">
+          <form
+            onSubmit={handleAddUser}
+            className="grid grid-cols-1 md:grid-cols-4 gap-3"
+          >
+            <input
+              required
+              type="text"
+              placeholder="Name"
+              className="bg-gray-50 border-gray-200 rounded-xl p-3 text-xs font-bold w-full"
+              value={newUser.name}
+              onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+            />
+            <input
+              required
+              type="email"
+              placeholder="Email"
+              className="bg-gray-50 border-gray-200 rounded-xl p-3 text-xs font-bold w-full"
+              value={newUser.email}
+              onChange={(e) =>
+                setNewUser({ ...newUser, email: e.target.value })
+              }
+            />
+            <input
+              required
+              type="password"
+              placeholder="Pass"
+              className="bg-gray-50 border-gray-200 rounded-xl p-3 text-xs font-bold w-full"
+              value={newUser.password}
+              onChange={(e) =>
+                setNewUser({ ...newUser, password: e.target.value })
+              }
+            />
+            <button
+              disabled={isSubmitting}
+              type="submit"
+              className="bg-blue-600 text-white rounded-xl text-[10px] font-black py-3 px-4 flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                "ADD USER"
+              )}
+            </button>
+          </form>
         </div>
       </div>
-      <div className="bg-white/5 backdrop-blur-xl rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-white/[0.02] border-b border-white/5">
-              <tr>
-                <th className="p-6 text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                  {" "}
-                  Identity{" "}
-                </th>
-                <th className="p-6 text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                  {" "}
-                  Email Access{" "}
-                </th>
-                <th className="p-6 text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                  {" "}
-                  Authority{" "}
-                </th>
-                <th className="p-6 text-[10px] font-black uppercase text-slate-500 tracking-widest">
-                  {" "}
-                  Membership{" "}
-                </th>
-                <th className="p-6 text-[10px] font-black uppercase text-slate-500 tracking-widest text-right">
-                  {" "}
-                  Actions{" "}
-                </th>
+
+      {/* SEARCH BAR (Mobile full width) */}
+      <div className="relative w-full">
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+          size={16}
+        />
+        <input
+          type="text"
+          placeholder="Search customers..."
+          className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {/* SCROLLABLE USER TABLE */}
+      <div className="bg-white border border-gray-200 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-sm">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left min-w-[700px]">
+            <thead>
+              <tr className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest">
+                <th className="p-5">User Info</th>
+                <th className="p-5">Status</th>
+                <th className="p-5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredUsers.map((u) => (
-                <tr
-                  key={u._id}
-                  className="hover:bg-white/[0.02] transition-colors group"
-                >
-                  <td className="p-6 font-medium">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-[1px] shadow-lg shadow-blue-500/10">
-                        <div className="w-full h-full bg-slate-900 rounded-[15px] flex items-center justify-center font-black text-white text-xs">
-                          {u.name.charAt(0)}
-                        </div>
-                      </div>
-                      <span className="text-slate-100 font-bold">{u.name}</span>
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex items-center gap-2 text-slate-400 text-sm">
-                      <Mail size={14} className="text-slate-600" /> {u.email}
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                        u.role === "admin"
-                          ? "bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]"
-                          : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                      }`}
-                    >
-                      <Shield size={10} /> {u.role}
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                      <Calendar size={14} className="text-slate-700" />{" "}
-                      {new Date(u.createdAt).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="p-6 text-right">
-                    {u.role !== "admin" && (
-                      <button
-                        onClick={() => handleDelete(u._id, u.role)}
-                        className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan="3"
+                    className="p-20 text-center text-slate-400 font-bold italic"
+                  >
+                    Loading list...
                   </td>
                 </tr>
-              ))}
+              ) : (
+                users.map((u) => (
+                  <tr
+                    key={u._id}
+                    className="hover:bg-blue-50/30 transition-colors"
+                  >
+                    <td className="p-5">
+                      <p className="text-sm font-black text-slate-800">
+                        {u.name}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-400">
+                        {u.email}
+                      </p>
+                    </td>
+                    <td className="p-5">
+                      <span
+                        className={`flex items-center gap-1.5 text-[9px] font-black uppercase px-3 py-1 rounded-full w-fit ${
+                          u.isActive
+                            ? "bg-emerald-100 text-emerald-600"
+                            : "bg-red-100 text-red-600"
+                        }`}
+                      >
+                        {u.isActive ? (
+                          <CheckCircle2 size={12} />
+                        ) : (
+                          <XCircle size={12} />
+                        )}{" "}
+                        {u.isActive ? "Active" : "Disabled"}
+                      </span>
+                    </td>
+                    <td className="p-5">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleToggleStatus(u._id)}
+                          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-[9px] font-black uppercase"
+                        >
+                          Toggle
+                        </button>
+                        <button className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-          {filteredUsers.length === 0 && (
-            <div className="p-20 text-center">
-              <UserCheck className="mx-auto mb-4 text-slate-700" size={40} />
-              <p className="text-slate-500 font-bold italic">
-                {" "}
-                No user records found.{" "}
-              </p>
-            </div>
-          )}
+        </div>
+
+        {/* PAGINATION (Responsive Stack) */}
+        <div className="p-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/30">
+          <p className="text-[10px] font-bold text-gray-400 uppercase">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="p-2 bg-white border border-gray-200 rounded-xl"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="p-2 bg-white border border-gray-200 rounded-xl"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

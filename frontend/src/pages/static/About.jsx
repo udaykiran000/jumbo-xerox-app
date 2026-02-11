@@ -1,72 +1,126 @@
-import { NavLink } from "react-router-dom";
+import React from "react";
+import {
+  FiPrinter,
+  FiZap,
+  FiTarget,
+  FiShield,
+  FiCheckCircle,
+  FiPhone,
+  FiMail,
+  FiMapPin,
+} from "react-icons/fi";
 
-export default function About() {
+const About = () => {
   return (
-    <section className="w-full">
-      {/* HERO / BREADCRUMB */}
-      <div className="relative bg-gradient-to-br from-pink-50 via-purple-50 to-white overflow-hidden">
-        {/* soft circles */}
-        <div className="absolute -left-40 -top-40 w-96 h-96 rounded-full bg-pink-100 opacity-40" />
-        <div className="absolute right-0 top-10 w-72 h-72 rounded-full bg-purple-100 opacity-40" />
-
-        <div className="relative max-w-7xl mx-auto px-6 py-28 text-center">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900">
-            About Us
-          </h1>
-
-          {/* breadcrumb */}
-          <div className="mt-6 inline-flex items-center gap-2 bg-white px-6 py-2 rounded-full shadow-sm">
-            <NavLink
-              to="/"
-              className="text-pink-500 font-medium hover:underline"
-            >
-              Home
-            </NavLink>
-            <span className="text-pink-400">–</span>
-            <span className="text-pink-500 font-medium">About Us</span>
+    <div className="bg-slate-50 min-h-screen">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Hero Section */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl mb-8 shadow-2xl animate-float">
+            <FiPrinter className="text-4xl text-white" />
           </div>
-        </div>
-      </div>
-
-      {/* CONTENT SECTION */}
-      <div className="max-w-7xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
-        {/* Left text */}
-        <div>
-          <span className="inline-block mb-4 px-4 py-1 rounded-full bg-pink-100 text-pink-600 text-sm font-semibold">
-            MORE ABOUT US
-          </span>
-
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-            Printing Made Simple & Reliable
-          </h2>
-
-          <p className="text-gray-700 leading-relaxed mb-4">
-            Whether you're a student, business owner, or professional, Jumbo
-            Xerox delivers fast, reliable, and hassle-free printing solutions
-            right to your fingertips.
-          </p>
-
-          <p className="text-gray-700 leading-relaxed mb-6">
-            Upload your files, calculate prices instantly, and get doorstep
-            delivery across Guntur. From A4 printouts and plan prints to
-            binding, cards, flyers, and brochures — we do it all with care and
-            quality.
-          </p>
-
-          <button className="px-8 py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold shadow hover:opacity-90">
-            MORE ABOUT US
-          </button>
-        </div>
-
-        {/* Right image placeholder */}
-        <div className="relative">
-          <div className="rounded-2xl bg-gradient-to-br from-teal-200 to-cyan-200 h-80 flex items-center justify-center shadow">
-            <span className="text-gray-700 font-semibold">
-              Printing Samples Image
+          <h1 className="text-5xl md:text-6xl font-black mb-4 text-slate-900 tracking-tighter">
+            Welcome to{" "}
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Jumbo Xerox
             </span>
+          </h1>
+          <h2 className="text-2xl font-bold text-slate-600 mb-6">
+            Guntur's Most Trusted Online Printing Service
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+          {/* Who We Are */}
+          <div className="bg-white rounded-3xl shadow-xl p-10 border-t-8 border-blue-600">
+            <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3">
+              <FiZap className="text-blue-600" /> WHO WE ARE
+            </h3>
+            <p className="text-slate-600 leading-loose mb-6">
+              Whether you're a student, business owner, or professional, Jumbo
+              Xerox brings fast, reliable, and hassle-free printing solutions
+              right to your fingertips.
+            </p>
+            <div className="bg-blue-50 rounded-2xl p-6 border-l-4 border-blue-500 font-bold text-blue-900">
+              Order online. Upload your files. Get doorstep delivery in Guntur.
+            </div>
+          </div>
+
+          {/* Our Mission */}
+          <div className="bg-white rounded-3xl shadow-xl p-10 border-t-8 border-purple-600">
+            <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3">
+              <FiTarget className="text-purple-600" /> OUR MISSION
+            </h3>
+            <p className="text-slate-600 leading-loose mb-6">
+              To provide fast, affordable, and high-quality printing solutions
+              for students, offices, businesses, and professionals in Guntur.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              {["Fast Service", "Affordable", "Reliable", "24/7 Support"].map(
+                (t) => (
+                  <div
+                    key={t}
+                    className="bg-slate-50 p-3 rounded-xl text-xs font-black text-slate-700 uppercase flex items-center gap-2"
+                  >
+                    <FiCheckCircle className="text-green-500" /> {t}
+                  </div>
+                )
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+
+        {/* Bulk Printing CTA */}
+        <div className="bg-gradient-to-r from-orange-400 via-red-500 to-pink-600 rounded-[40px] shadow-2xl p-12 text-white text-center mb-16">
+          <h2 className="text-4xl font-black mb-6 uppercase tracking-tighter">
+            Need Bulk Printing Services?
+          </h2>
+          <p className="text-xl mb-10 opacity-90">
+            Call us for corporate orders and special pricing.
+          </p>
+          <div className="flex flex-col md:flex-row justify-center gap-6">
+            <a
+              href="tel:+919441081125"
+              className="bg-white text-orange-600 px-10 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition"
+            >
+              +91 9441081125
+            </a>
+            <a
+              href="/contact"
+              className="border-2 border-white px-10 py-4 rounded-2xl font-black hover:bg-white hover:text-orange-600 transition"
+            >
+              CONTACT US
+            </a>
+          </div>
+        </div>
+
+        {/* Final Notes Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-blue-100 p-8 rounded-3xl border border-blue-200">
+            <FiMapPin className="text-blue-600 mb-4" size={30} />
+            <h4 className="font-black text-blue-900 mb-2">STORE PICKUP</h4>
+            <p className="text-sm text-blue-700 font-medium">
+              Guntur Branch Only
+            </p>
+          </div>
+          <div className="bg-yellow-100 p-8 rounded-3xl border border-yellow-200">
+            <FiZap className="text-yellow-600 mb-4" size={30} />
+            <h4 className="font-black text-yellow-900 mb-2">BULK ORDERS</h4>
+            <p className="text-sm text-yellow-700 font-medium">
+              Special Pricing Available
+            </p>
+          </div>
+          <div className="bg-green-100 p-8 rounded-3xl border border-green-200">
+            <FiMail className="text-green-600 mb-4" size={30} />
+            <h4 className="font-black text-green-900 mb-2">ORDER SUPPORT</h4>
+            <p className="text-sm text-green-700 font-medium">
+              info@jumboxerox.com
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
   );
-}
+};
+
+export default About;

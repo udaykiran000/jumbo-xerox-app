@@ -34,19 +34,25 @@ export const useFileUpload = () => {
     }
   };
 
-  // 'stats' parameter added for Total ETA calculation
-  const uploadFile = async (file, { onAlert, onProgress, onEta, stats }) => {
+  const uploadFile = async (
+    file,
+    { onAlert, onProgress, onEta, stats, onThresholdWarning },
+  ) => {
     await requestWakeLock();
-    const startTime = Date.now();
-    let uploadId = localStorage.getItem(`upId_${file.name}`);
-    let chunkIndex = 0;
-    let offset = 0;
 
+    const startTime = Date.now();
+    let thresholdChecked = false;
+
+    let uploadId = localStorage.getItem(`upId_${file.name}`);
+    let offset = 0;
+    let chunkIndex = 0;
+
+    // --- 1. RESUME HANDSHAKE ---
     if (uploadId) {
       try {
         const { data } = await api.get(`/upload/status?uploadId=${uploadId}`);
-        chunkIndex = data.uploadedChunks;
-        offset = chunkIndex * (1024 * 1024); // Handshake logic
+        offset = data.uploadedBytes || 0;
+        chunkIndex = data.nextIndex || 0;
       } catch (e) {
         uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       }
@@ -55,65 +61,102 @@ export const useFileUpload = () => {
       localStorage.setItem(`upId_${file.name}`, uploadId);
     }
 
-    let currentChunkSize = 1024 * 1024; // 1MB Base
+    // --- 2. CONFIG ---
+    let currentChunkSize = 2 * 1024 * 1024; // Base 2MB
+    const MAX_CONCURRENCY = 4;
+    let activeUploads = 0;
+    let failed = false;
+    let internalOffset = offset;
+    let lastReportedProgress = 0;
 
-    while (offset < file.size) {
-      if (pauseRef.current) return { paused: true };
+    const uploadChunkTask = async (idx, startByte, size) => {
+      if (pauseRef.current || failed) return;
+      activeUploads++;
 
-      const chunk = file.slice(offset, offset + currentChunkSize);
+      const chunk = file.slice(startByte, startByte + size);
+
+      // CRITICAL: Append metadata BEFORE the file to avoid Busboy deadlock
       const fd = new FormData();
-      fd.append("chunk", chunk);
-      fd.append("chunkIndex", chunkIndex);
       fd.append("uploadId", uploadId);
+      fd.append("chunkIndex", idx);
+      fd.append("chunk", chunk);
 
-      let success = false;
-      let retries = 0;
-      const retryGaps = [1000, 3000, 5000];
+      const t0 = performance.now();
+      try {
+        await api.post("/upload/chunk", fd);
+        const duration = (performance.now() - t0) / 1000;
 
-      while (!success && retries < 3) {
-        try {
-          const t0 = performance.now();
-          await api.post("/upload/chunk", fd);
-          const duration = (performance.now() - t0) / 1000;
+        // Adaptive scaling
+        if (duration < 1.2)
+          currentChunkSize = Math.min(currentChunkSize * 1.5, 20 * 1024 * 1024);
+        else if (duration > 3.5)
+          currentChunkSize = Math.max(currentChunkSize / 1.5, 1024 * 1024);
 
-          // 10MB MAX CHUNK - WIFI OPTIMIZATION
-          if (duration < 0.8)
-            currentChunkSize = Math.min(currentChunkSize * 2, 10 * 1024 * 1024);
-          else if (duration > 3)
-            currentChunkSize = Math.max(currentChunkSize / 2, 512 * 1024);
+        // Update overall offset accurately
+        lastReportedProgress += chunk.size;
+        const fileP = Math.round((lastReportedProgress / file.size) * 100);
 
+        setProgress((v) => ({ ...v, [file.name]: fileP }));
+        if (onProgress) onProgress(fileP, lastReportedProgress);
+
+        if (onEta && stats) {
           const speed = chunk.size / duration;
-
-          // TOTAL ETA LOGIC (Combined for all files)
-          if (onEta && stats) {
-            const currentTotalUploaded =
-              stats.uploadedSoFar + offset + chunk.size;
-            const remainingBytes = stats.totalSize - currentTotalUploaded;
-            const totalEtaSecs = Math.round(remainingBytes / speed);
-            if (totalEtaSecs >= 0) {
-              onEta(new Date(totalEtaSecs * 1000).toISOString().substr(11, 8));
-            }
-          }
-
-          success = true;
-        } catch (err) {
-          retries++;
-          if (retries >= 3) {
-            pauseRef.current = true;
-            if (onAlert) onAlert("Network Error: 3 retries failed.");
-            return { paused: true };
-          }
-          await new Promise((r) => setTimeout(r, retryGaps[retries - 1]));
+          const remaining = file.size - lastReportedProgress;
+          const eta = Math.round(remaining / speed);
+          onEta(new Date(eta * 1000).toISOString().substr(11, 8));
         }
+
+        activeUploads--;
+      } catch (err) {
+        failed = true;
+        activeUploads--;
+        throw err;
+      }
+    };
+
+    // --- 3. PARALLEL LOOP ---
+    lastReportedProgress = offset;
+
+    while (internalOffset < file.size && !failed) {
+      if (pauseRef.current)
+        return { paused: true, offset: lastReportedProgress };
+
+      // 5-min rule
+      const elapsed = (Date.now() - startTime) / 60000;
+      if (
+        !thresholdChecked &&
+        elapsed >= 5 &&
+        (lastReportedProgress / file.size) * 100 < 50
+      ) {
+        thresholdChecked = true;
+        pauseRef.current = true;
+        if (onThresholdWarning) onThresholdWarning();
+        return { paused: true, offset: lastReportedProgress };
       }
 
-      offset += chunk.size;
-      chunkIndex++;
-      const fileP = Math.round((offset / file.size) * 100);
-      setProgress((v) => ({ ...v, [file.name]: fileP }));
-      if (onProgress) onProgress(fileP, offset); // sends back bytes for overall calc
+      const tasks = [];
+      while (activeUploads < MAX_CONCURRENCY && internalOffset < file.size) {
+        const size = Math.min(currentChunkSize, file.size - internalOffset);
+        tasks.push(uploadChunkTask(chunkIndex, internalOffset, size));
+        internalOffset += size;
+        chunkIndex++;
+      }
+
+      if (tasks.length > 0) {
+        try {
+          await Promise.all(tasks);
+        } catch (e) {
+          console.error("Batch failed", e);
+          pauseRef.current = true;
+          if (onAlert) onAlert("Upload connection lost. Paused.");
+          return { paused: true, offset: lastReportedProgress };
+        }
+      }
     }
 
+    if (failed) return { success: false };
+
+    // --- 4. MERGE ---
     try {
       const res = await api.post("/upload/merge", {
         uploadId,

@@ -1,52 +1,103 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useContext } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import {
-  FileText,
   RotateCcw,
-  LifeBuoy,
-  Upload,
   Moon,
   Sun,
-  LogOut,
   ExternalLink,
   Loader2,
+  Package,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  FileText,
+  Download,
+  Info,
+  CreditCard,
+  AlertCircle,
 } from "lucide-react";
-import api from "../../services/api"; // Backend connection
+import { FiMapPin, FiPhone, FiMail, FiZap } from "react-icons/fi";
+import api from "../../services/api";
 import toast from "react-hot-toast";
+import { AuthContext } from "../../context/AuthContext";
+import { displayRazorpay } from "../../services/paymentService";
+
+// --- Service Cards Images ---
+import a4Img from "../../assets/a4.jpg";
+import planImg from "../../assets/Plan-Printing.jpg";
+import bcardImg from "../../assets/bcard.jpg";
 
 export default function UserDashboard() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user")) || {
-    name: "User",
-    email: "N/A",
-    phone: "N/A",
-  };
+  const { user } = useContext(AuthContext);
 
-  const [theme, setTheme] = useState("dark");
+  // States
+  const [userData, setUserData] = useState({ name: "User", email: "" });
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState("light");
+  const [isResuming, setIsResuming] = useState(false);
 
-  // 1. Theme persistence
-  useEffect(() => {
-    const saved = localStorage.getItem("ui-theme");
-    setTheme(saved || "dark");
-  }, []);
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
 
-  // 2. Fetch Orders from Backend
+  // Modal State
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
   useEffect(() => {
-    const fetchOrders = async () => {
+    const savedTheme = localStorage.getItem("ui-theme") || "light";
+    setTheme(savedTheme);
+
+    const loadDashboardData = async () => {
       try {
-        const { data } = await api.get("/orders/myorders");
-        setOrders(data);
+        setLoading(true);
+        const profileRes = await api.get("/users/profile");
+        setUserData(profileRes.data);
+
+        // Synced with updated backend route
+        const ordersRes = await api.get("/orders/my-orders");
+        setOrders(ordersRes.data || []);
       } catch (err) {
-        console.log(err);
-        toast.error("Failed to load orders");
+        console.error("Dashboard Load Error:", err);
+        toast.error("Failed to sync dashboard");
       } finally {
         setLoading(false);
       }
     };
-    fetchOrders();
+    loadDashboardData();
   }, []);
+
+  // --- LOGICAL CONNECTIVITY: RESUME PAYMENT ---
+  const handlePayNow = async (orderId) => {
+    setIsResuming(true);
+    try {
+      // Calls backend to generate fresh Razorpay Order ID
+      const { data } = await api.post(`/orders/resume-payment/${orderId}`);
+      // Triggers Razorpay SDK
+      await displayRazorpay(data, user, navigate);
+    } catch (err) {
+      const msg =
+        err.response?.data?.message || "Payment initialization failed";
+      toast.error(msg);
+    } finally {
+      setIsResuming(false);
+    }
+  };
+
+  // Pagination Logic
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+
+  const stats = {
+    total: orders.length,
+    pending: orders.filter((o) => o.paymentStatus === "Pending").length,
+    completed: orders.filter((o) => o.status === "Completed").length,
+  };
 
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
@@ -54,35 +105,10 @@ export default function UserDashboard() {
     localStorage.setItem("ui-theme", next);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    toast.success("Logged out successfully");
-    navigate("/login");
+  const openOrderDetails = (order) => {
+    setSelectedOrder(order);
+    setShowModal(true);
   };
-
-  // Magnetic Effect Logic
-  useEffect(() => {
-    const els = document.querySelectorAll(".magnetic");
-    const move = (e) => {
-      const el = e.currentTarget;
-      const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left - rect.width / 2;
-      const y = e.clientY - rect.top - rect.height / 2;
-      el.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
-    };
-    const leave = (e) => {
-      e.currentTarget.style.transform = "translate(0,0)";
-    };
-    els.forEach((el) => {
-      el.addEventListener("mousemove", move);
-      el.addEventListener("mouseleave", leave);
-    });
-    return () =>
-      els.forEach((el) => {
-        el.removeEventListener("mousemove", move);
-        el.removeEventListener("mouseleave", leave);
-      });
-  }, [loading]); // Re-run after loading finished
 
   const themeClasses =
     theme === "dark"
@@ -91,211 +117,424 @@ export default function UserDashboard() {
 
   return (
     <div
-      className={`${themeClasses} p-20 min-h-screen transition-colors duration-500 font-sans`}
+      className={`${themeClasses} min-h-screen transition-colors duration-500 font-sans pb-32`}
     >
-      <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
-        {/* Header */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 space-y-16">
+        {/* 1. HEADER */}
         <header
-          className={`${
-            theme === "dark"
-              ? "bg-white/5 border-white/10"
-              : "bg-white border-slate-200"
-          } backdrop-blur-2xl p-6 rounded-[2rem] flex flex-col md:flex-row justify-between items-center border shadow-xl gap-4`}
+          className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-slate-200"} backdrop-blur-xl p-10 rounded-[3rem] flex flex-col md:flex-row justify-between items-center border shadow-2xl gap-6`}
         >
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Hello, {user.name} 👋
-            </h1>
-            <p
-              className={`text-sm ${
-                theme === "dark" ? "text-slate-400" : "text-slate-500"
-              }`}
-            >
-              Manage your prints and track delivery status
-            </p>
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center text-3xl font-black shadow-lg uppercase">
+              {userData.name?.charAt(0)}
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight italic">
+                Hello, {userData.name}! 👋
+              </h1>
+              <p className="text-slate-500 font-medium">{userData.email}</p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className="p-3 rounded-xl bg-slate-500/10 hover:bg-slate-500/20 transition-all"
-            >
-              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-red-400 bg-red-500/10 px-5 py-2.5 rounded-xl font-semibold hover:bg-red-500/20 transition-all active:scale-95"
-            >
-              <LogOut size={18} />
-              <span>Logout</span>
-            </button>
-          </div>
+          <button
+            onClick={toggleTheme}
+            className="p-4 rounded-2xl bg-slate-500/10 hover:bg-slate-500/20 transition-all border border-slate-200/50"
+          >
+            {theme === "light" ? <Moon size={24} /> : <Sun size={24} />}
+          </button>
         </header>
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-4">
-          <button
-            onClick={() => navigate("/quick-print")}
-            className="magnetic flex items-center gap-2 px-6 py-3 rounded-2xl font-bold bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-all"
-          >
-            <Upload size={18} /> Upload New
-          </button>
-          <a
-            href="#orders"
-            className="magnetic flex items-center gap-2 px-6 py-3 rounded-2xl font-bold bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-all"
-          >
-            <RotateCcw size={18} /> History
-          </a>
-          <button className="magnetic flex items-center gap-2 px-6 py-3 rounded-2xl font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all">
-            <LifeBuoy size={18} /> Support
-          </button>
+        {/* 2. STATS GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <StatCard
+            label="Total Requests"
+            value={stats.total}
+            icon={<Package />}
+            color="text-blue-500"
+            theme={theme}
+          />
+          <StatCard
+            label="Unpaid Orders"
+            value={stats.pending}
+            icon={<RotateCcw />}
+            color="text-amber-500"
+            theme={theme}
+          />
+          <StatCard
+            label="Finalized"
+            value={stats.completed}
+            icon={<CheckCircle />}
+            color="text-emerald-500"
+            theme={theme}
+          />
         </div>
 
-        {/* Hero Card */}
-        <div className="relative group overflow-hidden rounded-[2.5rem] p-1 shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 animate-pulse" />
-          <div
-            className={`relative ${
-              theme === "dark" ? "bg-slate-900/90" : "bg-white/90"
-            } backdrop-blur-xl p-8 md:p-12 rounded-[2.4rem] flex flex-col items-start gap-6`}
-          >
-            <div className="space-y-2">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight">
-                New Print
-              </h2>
-              <p
-                className={`${
-                  theme === "dark" ? "text-slate-400" : "text-slate-600"
-                } text-lg max-w-md`}
-              >
-                Upload your PDF/Docs and get high-quality laser prints
-                delivered.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate("/quick-print")}
-              className="group relative flex items-center gap-3 bg-cyan-500 hover:bg-cyan-400 text-white px-8 py-4 rounded-2xl font-bold transition-all hover:shadow-[0_0_30px_rgba(6,182,212,0.4)]"
-            >
-              <FileText size={22} />
-              Order Now 🖨️
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div
-            className={`${
-              theme === "dark" ? "bg-white/5" : "bg-white"
-            } p-8 rounded-[2rem] border border-white/10`}
-          >
-            <p className="text-sm font-medium text-slate-500 uppercase">
-              Total Orders
-            </p>
-            <h3 className="text-3xl font-black mt-2">{orders.length}</h3>
-            <p className="text-xs text-slate-500 mt-2 font-medium italic">
-              Lifetime printing activity
-            </p>
-          </div>
-          <div
-            className={`${
-              theme === "dark" ? "bg-white/5" : "bg-white"
-            } p-8 rounded-[2rem] border border-white/10`}
-          >
-            <p className="text-sm font-medium text-slate-500 uppercase">
-              Profile Info
-            </p>
-            <h3 className="text-xl font-bold mt-2 truncate">{user.email}</h3>
-            <p className="text-sm text-slate-500">{user.phone}</p>
-          </div>
-        </div>
-
-        {/* Orders Table */}
+        {/* 3. RECENT ORDERS TABLE */}
         <div
-          id="orders"
-          className={`${
-            theme === "dark" ? "bg-white/5" : "bg-white"
-          } backdrop-blur-xl p-6 md:p-8 rounded-[2rem] border border-white/10 shadow-xl`}
+          className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-slate-200"} p-10 rounded-[3rem] border shadow-2xl`}
         >
-          <h3 className="text-xl font-bold mb-8">Recent Activity</h3>
+          <h2 className="text-2xl font-black mb-8 px-4 border-l-4 border-blue-600 uppercase tracking-tighter">
+            Your Printing History
+          </h2>
 
           {loading ? (
-            <div className="flex flex-col items-center py-20 gap-4">
-              <Loader2 className="animate-spin text-cyan-500" size={40} />
-              <p className="text-slate-500 animate-pulse">
-                Fetching your orders...
+            <div className="py-24 flex flex-col items-center gap-4">
+              <Loader2 className="animate-spin text-blue-600" size={50} />
+              <p className="text-slate-500 font-black uppercase tracking-widest text-xs">
+                Syncing Pipeline...
               </p>
             </div>
           ) : orders.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-slate-500 mb-4 text-lg">
-                No orders found yet.
-              </p>
-              <button
-                onClick={() => navigate("/quick-print")}
-                className="text-cyan-500 font-bold hover:underline"
-              >
-                Place your first order!
-              </button>
+            <div className="py-24 text-center text-slate-400 font-bold italic border-2 border-dashed border-slate-200 rounded-[2rem]">
+              No orders found. Start your first project!
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-separate border-spacing-y-3">
-                <thead>
-                  <tr className="text-slate-500 uppercase text-[10px] tracking-widest font-bold">
-                    <th className="px-4 pb-2">Order ID</th>
-                    <th className="px-4 pb-2">File Name</th>
-                    <th className="px-4 pb-2">Amount</th>
-                    <th className="px-4 pb-2 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((order) => (
-                    <tr
-                      key={order._id}
-                      className={`${
-                        theme === "dark"
-                          ? "bg-white/5 hover:bg-white/10"
-                          : "bg-slate-100 hover:bg-slate-200"
-                      } transition-colors group cursor-pointer`}
-                    >
-                      <td className="p-4 rounded-l-2xl font-mono text-xs opacity-60">
-                        #{order._id.slice(-6).toUpperCase()}
-                      </td>
-                      <td className="p-4 font-semibold italic">
-                        <a
-                          href={order.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-2 hover:text-cyan-500 transition-colors"
-                        >
-                          <ExternalLink size={14} />{" "}
-                          {order.fileName || "document.pdf"}
-                        </a>
-                      </td>
-                      <td className="p-4 font-bold">₹{order.totalAmount}</td>
-                      <td className="p-4 rounded-r-2xl text-right">
-                        <span
-                          className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter 
-                          ${
-                            order.status === "Completed"
-                              ? "bg-emerald-500/20 text-emerald-400"
-                              : order.status === "Processing"
-                              ? "bg-cyan-500/20 text-cyan-400"
-                              : "bg-yellow-500/20 text-yellow-400"
-                          }`}
-                        >
-                          {order.status}
-                        </span>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-separate border-spacing-y-4">
+                  <thead>
+                    <tr className="text-slate-400 uppercase text-[11px] font-black tracking-[0.2em] px-4">
+                      <th className="pb-4 px-6">ID</th>
+                      <th className="pb-4 px-6">Service</th>
+                      <th className="pb-4 px-6">Financials</th>
+                      <th className="pb-4 px-6">Status</th>
+                      <th className="pb-4 px-6 text-right">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {currentOrders.map((order) => (
+                      <tr
+                        key={order._id}
+                        className={`${theme === "dark" ? "bg-white/5" : "bg-slate-50"} hover:bg-blue-500/5 transition-all rounded-2xl`}
+                      >
+                        <td className="py-6 px-6 rounded-l-2xl font-mono text-xs font-bold text-blue-600 italic">
+                          #{order._id.slice(-6).toUpperCase()}
+                        </td>
+                        <td className="py-6 px-6 font-black text-sm uppercase">
+                          {order.serviceType}
+                        </td>
+                        <td className="py-6 px-6">
+                          <div className="flex flex-col">
+                            <span className="font-black italic text-sm">
+                              ₹{order.totalAmount}
+                            </span>
+                            <span
+                              className={`text-[9px] font-black uppercase tracking-widest ${order.paymentStatus === "Paid" ? "text-emerald-500" : "text-orange-500"}`}
+                            >
+                              {order.paymentStatus}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-6 px-6 font-bold text-slate-500">
+                          {order.status}
+                        </td>
+                        <td className="py-6 px-6 rounded-r-2xl text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            {/* LOGICAL CONNECTIVITY: PAY NOW BUTTON */}
+                            {order.paymentStatus === "Pending" &&
+                              !order.filesDeleted && (
+                                <button
+                                  onClick={() => handlePayNow(order._id)}
+                                  disabled={isResuming}
+                                  className="bg-blue-600 text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg animate-pulse flex items-center gap-2"
+                                >
+                                  {isResuming ? (
+                                    <Loader2
+                                      className="animate-spin"
+                                      size={12}
+                                    />
+                                  ) : (
+                                    <>
+                                      <CreditCard size={14} /> Pay Now
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            {order.filesDeleted &&
+                              order.paymentStatus === "Pending" && (
+                                <span className="text-[9px] font-black text-red-500 uppercase bg-red-50 px-4 py-2 rounded-xl border border-red-100 flex items-center gap-1">
+                                  <AlertCircle size={10} /> Expired
+                                </span>
+                              )}
+                            <button
+                              onClick={() => openOrderDetails(order)}
+                              className="bg-slate-800 text-white p-3 rounded-xl hover:bg-blue-600 transition-all shadow-lg"
+                            >
+                              <ExternalLink size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* PAGINATION */}
+              {totalPages > 1 && (
+                <div className="mt-10 flex justify-center items-center gap-6 bg-slate-100/50 p-4 rounded-3xl w-fit mx-auto">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-3 rounded-xl bg-white shadow-sm border border-slate-200 disabled:opacity-30"
+                  >
+                    <ChevronLeft />
+                  </button>
+                  <div className="font-black text-xs text-slate-500 uppercase tracking-widest">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(p + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="p-3 rounded-xl bg-white shadow-sm border border-slate-200 disabled:opacity-30"
+                  >
+                    <ChevronRight />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {/* 4. BIG SERVICE CARDS */}
+        <div className="space-y-12">
+          <h2 className="text-4xl font-black text-center tracking-tighter uppercase italic">
+            Order New Prints
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            <ServiceCard
+              title="Quick Printouts"
+              img={a4Img}
+              link="/quick-print"
+            />
+            <ServiceCard
+              title="Plan Printing"
+              img={planImg}
+              link="/plan-printing"
+            />
+            <ServiceCard
+              title="Business Cards"
+              img={bcardImg}
+              link="/business-cards"
+            />
+          </div>
+        </div>
+
+        {/* 5. NOTES SECTION */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-10">
+          <NoteBox
+            icon={<FiMapPin />}
+            title="STORE PICKUP"
+            desc="Arundelpet Guntur Only"
+            color="blue"
+          />
+          <NoteBox
+            icon={<FiZap />}
+            title="BULK ORDERS"
+            desc="+91 9441081125"
+            color="yellow"
+          />
+          <NoteBox
+            icon={<FiMail />}
+            title="SUPPORT"
+            desc="info@jumboxerox.com"
+            color="green"
+          />
+        </div>
       </div>
+
+      {/* --- ORDER DETAILS MODAL --- */}
+      {showModal && selectedOrder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="bg-blue-600 p-8 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Package size={24} />
+                <h2 className="text-xl font-black uppercase tracking-tight italic">
+                  Order Analysis
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="bg-white/20 p-2 rounded-xl hover:bg-white/40 transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-10 space-y-8">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Global Order ID
+                  </p>
+                  <p className="font-mono text-blue-600 font-bold truncate">
+                    {selectedOrder._id}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Service Class
+                  </p>
+                  <p className="font-bold text-slate-800 uppercase italic">
+                    {selectedOrder.serviceType}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Logistics Mode
+                  </p>
+                  <p className="font-bold text-slate-800 uppercase">
+                    {selectedOrder.deliveryMode}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Total Settle
+                  </p>
+                  <p className="font-black text-xl text-blue-600">
+                    ₹{selectedOrder.totalAmount}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4 flex items-center gap-2 tracking-widest italic border-b pb-2">
+                  <Info size={14} /> Technical Specs
+                </h4>
+                <div className="grid grid-cols-2 gap-y-3 text-xs font-bold">
+                  <p className="text-slate-500 uppercase">
+                    Pages:{" "}
+                    <span className="text-slate-800">
+                      {selectedOrder.details?.pages || "—"}
+                    </span>
+                  </p>
+                  <p className="text-slate-500 uppercase">
+                    Copies:{" "}
+                    <span className="text-slate-800">
+                      {selectedOrder.details?.copies || "1"}
+                    </span>
+                  </p>
+                  <p className="text-slate-500 uppercase">
+                    Size:{" "}
+                    <span className="text-slate-800">
+                      {selectedOrder.details?.size || "Standard"}
+                    </span>
+                  </p>
+                  <p className="text-slate-500 uppercase">
+                    Status:{" "}
+                    <span className="text-blue-600 italic">
+                      {selectedOrder.status}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Files Section with Expiry Sync */}
+              {selectedOrder.files && selectedOrder.files.length > 0 && (
+                <div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">
+                    Document Assets
+                  </h4>
+                  <div className="space-y-3">
+                    {selectedOrder.files.map((file, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 group transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="text-blue-600" size={18} />
+                          <span className="text-xs font-black text-slate-700 truncate w-40 md:w-64 italic">
+                            {file.name}
+                          </span>
+                        </div>
+                        {selectedOrder.filesDeleted ? (
+                          <span className="text-[9px] font-black text-red-500 uppercase">
+                            Purged
+                          </span>
+                        ) : (
+                          <a
+                            href={`${import.meta.env.VITE_API_BASE_URL.replace("/api", "")}${file.url}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 text-[10px] font-black text-blue-600 hover:text-black uppercase tracking-widest"
+                          >
+                            <Download size={14} /> Open Source
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// --- Internal Helper Components ---
+const StatCard = ({ label, value, icon, color, theme }) => (
+  <div
+    className={`${theme === "dark" ? "bg-white/5 border-white/10" : "bg-white border-slate-200"} p-10 rounded-[3rem] border shadow-xl flex items-center justify-between`}
+  >
+    <div>
+      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+        {label}
+      </p>
+      <h3 className="text-5xl font-black mt-2 tracking-tighter italic">
+        {value}
+      </h3>
+    </div>
+    <div className={`${color} bg-current/10 p-6 rounded-[2.2rem]`}>
+      {React.cloneElement(icon, { size: 40 })}
+    </div>
+  </div>
+);
+
+const ServiceCard = ({ title, img, link }) => (
+  <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden group border border-slate-100 hover:translate-y-[-10px] transition-all duration-500">
+    <div className="h-80 overflow-hidden relative">
+      <img
+        src={img}
+        alt={title}
+        className="w-full h-full object-cover group-hover:scale-110 transition duration-700"
+      />
+      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all duration-500" />
+    </div>
+    <div className="p-10 flex flex-col items-center">
+      <h4 className="font-black text-2xl text-slate-800 mb-6 uppercase tracking-tighter italic">
+        {title}
+      </h4>
+      <Link
+        to={link}
+        className="w-full py-5 bg-blue-600 text-white text-center rounded-[2.2rem] font-black shadow-xl hover:bg-black transition-all uppercase text-xs tracking-[0.2em]"
+      >
+        Start Project
+      </Link>
+    </div>
+  </div>
+);
+
+const NoteBox = ({ icon, title, desc, color }) => {
+  const colors = {
+    blue: "bg-blue-100 border-blue-500 text-blue-900",
+    yellow: "bg-orange-100 border-orange-500 text-orange-900",
+    green: "bg-emerald-100 border-emerald-500 text-emerald-900",
+  };
+  return (
+    <div
+      className={`${colors[color]} p-10 rounded-[2.8rem] border-l-[12px] shadow-lg`}
+    >
+      <div className="flex items-center gap-4 mb-3 font-black uppercase text-[10px] tracking-widest">
+        <span className="p-2 bg-white/50 rounded-lg">{icon}</span> {title}
+      </div>
+      <p className="text-[11px] font-black uppercase tracking-tight italic opacity-70">
+        {desc}
+      </p>
+    </div>
+  );
+};

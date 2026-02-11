@@ -1,189 +1,277 @@
-import { Outlet, NavLink, Link, useLocation } from "react-router-dom";
-import { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import AdminTopbar from "./AdminTopbar";
-import { motion, AnimatePresence } from "framer-motion";
+import Breadcrumbs from "../common/Breadcrumbs";
 import {
   LayoutDashboard,
   ShoppingCart,
+  Truck,
+  Trash2,
   Users,
+  CreditCard,
+  MessageSquare,
   Settings,
   LogOut,
   Printer,
-  CreditCard,
-  Truck,
-  ChevronRight,
+  Mail,
+  Phone,
+  Menu,
   X,
+  Database,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const AdminLayout = () => {
-  const { logout } = useContext(AuthContext);
-  const location = useLocation();
+  const { user, logout } = useContext(AuthContext);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const menu = [
-    { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={18} /> },
+  // Debugging route logs
+  useEffect(() => {
+    console.log(`[NAV-LOG] Current View: ${location.pathname}`);
+  }, [location]);
+
+  // Business Context Menu Items
+  const menuItems = [
+    { name: "Overview", path: "/admin", icon: <LayoutDashboard size={18} /> },
     { name: "Orders", path: "/admin/orders", icon: <ShoppingCart size={18} /> },
+    { name: "Shipments", path: "/admin/shipments", icon: <Truck size={18} /> },
+    {
+      name: "Storage Cleanup",
+      path: "/admin/delete-files",
+      icon: <Trash2 size={18} />,
+    },
+    {
+      name: "Customer Directory",
+      path: "/admin/users",
+      icon: <Users size={18} />,
+    },
     {
       name: "Payments",
       path: "/admin/payments",
       icon: <CreditCard size={18} />,
     },
-    { name: "Shipping", path: "/admin/shipping", icon: <Truck size={18} /> },
-    { name: "Users", path: "/admin/users", icon: <Users size={18} /> },
+    {
+      name: "Enquiries",
+      path: "/admin/contact-messages",
+      icon: <MessageSquare size={18} />,
+    },
     { name: "Settings", path: "/admin/settings", icon: <Settings size={18} /> },
   ];
 
-  const SidebarLink = ({ item, onClick }) => {
-    const isActive =
-      item.path === "/admin"
-        ? location.pathname === "/admin"
-        : location.pathname.startsWith(item.path);
-
-    return (
-      <Link
-        to={item.path}
-        onClick={onClick}
-        className={`flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
-          isActive
-            ? "bg-blue-600/10 text-blue-400 border border-blue-500/20"
-            : "text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent"
-        }`}
-      >
-        <div className="flex items-center gap-3 relative z-10">
-          <span
-            className={`${
-              isActive
-                ? "text-blue-400"
-                : "text-slate-500 group-hover:text-slate-300"
-            } transition-colors`}
-          >
-            {item.icon}
-          </span>
-          <span className="text-sm font-bold tracking-tight">{item.name}</span>
-        </div>
-        {isActive && (
-          <motion.div
-            layoutId="activeTab"
-            className="absolute left-0 w-1 h-6 bg-blue-500 rounded-r-full"
-          />
-        )}
-      </Link>
-    );
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   return (
-    <div className="flex h-screen bg-slate-950 font-sans text-slate-100 overflow-hidden">
-      {/* DESKTOP SIDEBAR */}
-      <aside className="w-72 bg-slate-900/50 backdrop-blur-2xl border-r border-white/5 hidden lg:flex flex-col z-50 shadow-2xl h-full">
-        <div className="p-8">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/30 group-hover:scale-110 transition-transform">
-              <Printer size={24} className="text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-black text-white tracking-tighter leading-none">
-                Jumbo <span className="text-blue-500">Xerox</span>
-              </span>
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] pl-0.5 mt-1">
-                Admin Console
-              </span>
-            </div>
-          </Link>
-        </div>
-        <div className="flex-1 px-4 overflow-y-auto custom-scrollbar">
-          <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">
-            Main Menu
-          </p>
-          <nav className="space-y-1.5">
-            {menu.map((item) => (
-              <SidebarLink key={item.path} item={item} />
-            ))}
+    <div className="min-h-screen bg-[#fcfcfd] flex flex-col font-sans text-slate-800">
+      {/* 1. CLEAN BUSINESS HEADER */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-16">
+        <div className="max-w-[1440px] mx-auto px-6 md:px-10 h-full flex items-center justify-between">
+          <div className="flex items-center gap-5">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="xl:hidden p-2 hover:bg-slate-50 rounded-lg text-slate-500"
+            >
+              <Menu size={20} />
+            </button>
+            <Link to="/admin" className="flex items-center gap-3">
+              <div className="bg-slate-900 p-1.5 rounded-md">
+                <Printer className="text-white" size={18} />
+              </div>
+              <div className="flex flex-col border-l border-slate-200 pl-3">
+                <span className="text-sm font-bold text-slate-900 leading-tight">
+                  Admin Console
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 leading-tight">
+                  Jumbo Xerox
+                </span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Desktop Menu - Functional Business Style */}
+          <nav className="hidden xl:flex items-center gap-1">
+            {menuItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`px-3 py-2 rounded-md text-[13px] font-semibold transition-colors ${
+                    isActive
+                      ? "text-blue-600 bg-blue-50/50"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+            <div className="w-px h-4 bg-slate-200 mx-3" />
+            <button
+              onClick={handleLogout}
+              className="px-3 py-2 text-[13px] font-bold text-red-600 hover:bg-red-50 rounded-md"
+            >
+              Log Out
+            </button>
           </nav>
         </div>
-        <div className="p-6 border-t border-white/5">
-          <button
-            onClick={logout}
-            className="flex items-center gap-3 p-4 text-slate-500 hover:text-red-400 hover:bg-red-400/5 w-full rounded-2xl transition-all font-bold text-sm group"
-          >
-            <div className="p-2 bg-slate-800 rounded-lg group-hover:bg-red-400/10 transition-colors">
-              <LogOut size={18} />
-            </div>
-            Logout Session
-          </button>
-        </div>
-      </aside>
+      </header>
 
-      {/* MOBILE SIDEBAR */}
+      {/* 2. MOBILE SIDEBAR */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-[100] lg:hidden">
+          <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
               onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-[100] xl:hidden"
             />
             <motion.aside
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute top-0 left-0 h-full w-72 bg-slate-900 border-r border-white/10 shadow-2xl flex flex-col"
+              transition={{ type: "tween", duration: 0.25 }}
+              className="fixed top-0 left-0 bottom-0 w-[280px] bg-white z-[101] xl:hidden flex flex-col shadow-xl"
             >
-              <div className="p-6 flex justify-between items-center border-b border-white/5">
-                <span className="text-lg font-black text-white">
-                  Jumbo Xerox
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <span className="font-bold text-slate-900">
+                  Store Management
                 </span>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 bg-white/5 rounded-full"
+                  className="text-slate-400"
                 >
                   <X size={20} />
                 </button>
               </div>
-              <div className="flex-1 px-4 py-6 overflow-y-auto">
-                <nav className="space-y-2">
-                  {menu.map((item) => (
-                    <SidebarLink
-                      key={item.path}
-                      item={item}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    />
-                  ))}
-                </nav>
-              </div>
-              <div className="p-6 border-t border-white/5">
-                <button
-                  onClick={logout}
-                  className="w-full py-3 bg-red-500/10 text-red-500 font-bold rounded-xl"
-                >
-                  Logout
-                </button>
+              <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                {menuItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold ${
+                      location.pathname === item.path
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {item.icon} {item.name}
+                  </Link>
+                ))}
               </div>
             </motion.aside>
-          </div>
+          </>
         )}
       </AnimatePresence>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-600/5 to-transparent pointer-events-none z-0" />
-        <AdminTopbar onMenuClick={() => setIsMobileMenuOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-10 relative z-10 custom-scrollbar">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <Outlet />
-          </motion.div>
-          <footer className="mt-10 py-6 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest border-t border-white/5">
-            © 2025 Jumbo Xerox • System Architecture v2.0
-          </footer>
-        </main>
-      </div>
+      {/* 3. MAIN INTERFACE */}
+      <main className="flex-grow w-full max-w-[1440px] mx-auto px-6 md:px-10 py-10">
+        <div className="mb-8">
+          <Breadcrumbs />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-xl border border-slate-200 p-6 md:p-10 shadow-sm"
+        >
+          <Outlet />
+        </motion.div>
+      </main>
+
+      {/* 4. REALISTIC BUSINESS FOOTER */}
+      <footer className="bg-white border-t border-slate-200 mt-auto py-12 px-6">
+        <div className="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
+          <div className="col-span-1 md:col-span-1 space-y-4">
+            <h2 className="text-slate-900 text-lg font-bold">Jumbo Xerox</h2>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed">
+              Internal store operations portal. Manage orders, track shipments,
+              and oversee customer support.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Navigation
+            </h3>
+            <ul className="space-y-2 text-sm font-semibold text-slate-600">
+              <li>
+                <Link to="/admin" className="hover:text-blue-600">
+                  Overview
+                </Link>
+              </li>
+              <li>
+                <Link to="/admin/orders" className="hover:text-blue-600">
+                  Pending Orders
+                </Link>
+              </li>
+              <li>
+                <Link to="/admin/users" className="hover:text-blue-600">
+                  Customers
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Support Enquiries
+            </h3>
+            <ul className="space-y-2 text-sm font-semibold text-slate-600">
+              <li>
+                <Link
+                  to="/admin/contact-messages"
+                  className="hover:text-blue-600"
+                >
+                  Inbound Messages
+                </Link>
+              </li>
+              <li>
+                <Link to="/admin/settings" className="hover:text-blue-600">
+                  Store Settings
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Contact Store
+            </h3>
+            <div className="space-y-2 text-sm font-semibold text-slate-600">
+              <div className="flex items-center gap-2">
+                <Mail size={16} className="text-slate-400" />{" "}
+                support@jumboxerox.com
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone size={16} className="text-slate-400" /> +91 9441081125
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-[1440px] mx-auto mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center text-[12px] font-bold text-slate-400">
+          <p>© 2026 Jumbo Xerox Operations</p>
+          <div className="flex gap-6 mt-4 md:mt-0">
+            <span className="flex items-center gap-1.5">
+              <Database size={14} /> Database: Sync OK
+            </span>
+            <span>Software v2.5.0</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
+
 export default AdminLayout;

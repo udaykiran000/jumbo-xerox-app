@@ -3,7 +3,7 @@ const User = require("../models/User");
 // Get Profile
 exports.getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user._id).select("-password");
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
@@ -13,7 +13,7 @@ exports.getUserProfile = async (req, res) => {
 // Update Profile (Name & Phone)
 exports.updateUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (user) {
       user.name = req.body.name || user.name;
       user.phone = req.body.phone || user.phone;
@@ -28,7 +28,7 @@ exports.updateUserProfile = async (req, res) => {
 // Add Address
 exports.addAddress = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     user.addresses.push(req.body);
     await user.save();
     res.json(user.addresses);

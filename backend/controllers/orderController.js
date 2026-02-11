@@ -1,107 +1,188 @@
 const Order = require("../models/Order");
 const mongoose = require("mongoose");
 const razorpayInstance = require("../config/razorpay");
-const { calculateBackendPrice } = require("../utils/priceCalculator");
+const {
+  calculateBackendPrice,
+  DELIVERY_CHARGE,
+} = require("../utils/priceCalculator");
 
+/**
+ * ORDER CONTROLLER - JUMBO XEROX
+ * Integrity: Restored original validations for Quick Print, Plan Printing, and Business Cards.
+ * Logic Update: Enforced Online-only payment and added Resume Payment feature.
+ */
+
+// 1. CREATE NEW ORDER (Restored Original Validations)
 exports.createOrder = async (req, res) => {
-  console.log("\n--- [START] Order Process ---");
+  console.log("\n--- [START] New Order Request ---");
   try {
-    // 👇 Receive 'shippingAddress' from frontend
-    const {
-      files,
-      details,
-      totalAmount,
-      paymentMethod,
-      deliveryMode,
-      shippingAddress,
-    } = req.body;
+    const { files, details, totalAmount, deliveryMode, serviceType } = req.body;
 
-    // ... Basic Validation ...
-    if (!files || files.length === 0)
-      return res.status(400).json({ success: false, message: "No files." });
+    // Log for debugging (Restored)
+    console.log("SERVICE TYPE:", serviceType);
+    console.log("RAW BODY DETAILS:", JSON.stringify(details, null, 2));
 
-    // ... Price Calculation (Same as before) ...
-    const pages = Number(details.pages);
-    const copies = Number(details.copies);
-    const serverSidePrice = calculateBackendPrice(pages, copies, details);
+    const pages = Number(details.pages || details.totalPages) || 0;
+    const copies = Number(details.qty || details.copies) || 1;
 
-    if (serverSidePrice === -1)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid specs." });
-    if (Math.abs(serverSidePrice - totalAmount) > 5)
-      return res
-        .status(400)
-        .json({ success: false, message: "Price mismatch." });
-
-    // 👇 SNAPSHOT LOGIC 👇
-    let finalAddress = null;
-    if (deliveryMode === "Delivery") {
-      if (!shippingAddress) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Delivery address is required." });
-      }
-      // Save the address object permanently in order
-      finalAddress = {
-        street: shippingAddress.street,
-        city: shippingAddress.city,
-        state: shippingAddress.state,
-        pincode: shippingAddress.pincode,
-      };
+    // Basic Validations (Restored)
+    if (pages <= 0 || copies <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid page or copy count. Must be greater than 0.",
+      });
     }
 
-    // Base Order Data
+    // 2. Service Specific Validations (INTEGRITY RESTORED)
+    let isMissing = false;
+    let missingInfo = {};
+
+    if (serviceType === "Quick Print") {
+      if (!details.printType || !details.size || !details.media) {
+        isMissing = true;
+        missingInfo = {
+          printType: details.printType,
+          size: details.size,
+          media: details.media,
+        };
+      }
+    } else if (serviceType === "Plan Printing") {
+      if (!details.size || !details.media) {
+        isMissing = true;
+        missingInfo = { size: details.size, media: details.media };
+      }
+    } else if (serviceType === "Business Card") {
+      if (!details.paper || !details.lamination || !details.sides) {
+        isMissing = true;
+        missingInfo = {
+          paper: details.paper,
+          lamination: details.lamination,
+          sides: details.sides,
+        };
+      }
+    }
+
+    if (isMissing) {
+      console.error("ORDER-FAIL: Missing required fields", missingInfo);
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields for ${serviceType}.`,
+      });
+    }
+
+    // 3. Price Calculation Logic (Restored)
+    let basePrice = calculateBackendPrice(serviceType, pages, copies, details);
+
+    if (basePrice === -1) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid configuration for ${serviceType}.`,
+      });
+    }
+
+    let serverSidePrice = basePrice;
+    if (deliveryMode === "Delivery") {
+      serverSidePrice += DELIVERY_CHARGE; // 90rs logic
+    }
+
+    // Security Check: Price Mismatch Validation (Restored)
+    if (Math.abs(serverSidePrice - totalAmount) > 5) {
+      return res.status(400).json({
+        success: false,
+        message: `Price mismatch detection. Please try again.`,
+      });
+    }
+
+    // DB Preparation (Enforced Online Only)
     const baseOrderData = {
       user: req.user._id,
       files,
+      serviceType: serviceType,
       details: { ...details, pages, copies },
       totalAmount: serverSidePrice,
-      paymentMethod,
-      deliveryMode: deliveryMode || "Pickup",
-      shippingAddress: finalAddress, // Saved here
+      paymentMethod: "Online", // Enforced for Digital Integrity
+      deliveryMode,
+      shippingAddress: req.body.shippingAddress || null,
+      pickupDetails: req.body.pickupDetails || null,
       paymentStatus: "Pending",
       status: "Pending",
     };
 
-    // --- CASH ---
-    if (paymentMethod === "Cash") {
-      const newOrder = await Order.create(baseOrderData);
-      return res
-        .status(201)
-        .json({ success: true, message: "Order placed!", order: newOrder });
-    }
+    // 4. Handle Online Payment (Razorpay)
+    const options = {
+      amount: Math.round(serverSidePrice * 100), // Convert to Paisa
+      currency: "INR",
+      receipt: `receipt_${Date.now()}`,
+    };
 
-    // --- ONLINE ---
-    if (paymentMethod === "Online") {
-      if (!razorpayInstance) throw new Error("Razorpay not configured");
+    // Create Razorpay Order
+    const rzpOrder = await razorpayInstance.orders.create(options);
 
-      const options = {
-        amount: Math.round(serverSidePrice * 100),
-        currency: "INR",
-        receipt: `receipt_${Date.now()}`,
-      };
-      const rzpOrder = await razorpayInstance.orders.create(options);
+    // Save Order to MongoDB with Razorpay ID
+    const newOrder = await Order.create({
+      ...baseOrderData,
+      razorpayOrderId: rzpOrder.id,
+    });
 
-      const newOrder = await Order.create({
-        ...baseOrderData,
-        razorpayOrderId: rzpOrder.id,
-      });
-      return res
-        .status(201)
-        .json({ success: true, razorpayOrder: rzpOrder, dbOrder: newOrder });
-    }
+    console.log("SUCCESS: Online Order Ready, Razorpay ID:", rzpOrder.id);
 
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid payment method." });
+    return res.status(201).json({
+      success: true,
+      razorpayOrder: rzpOrder,
+      order: newOrder,
+    });
   } catch (error) {
-    console.error("Order Error:", error);
+    console.error("CRITICAL ORDER ERROR:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ... keep other functions (getMyOrders, getOrderById) as is ...
+// 2. RESUME PAYMENT (Integrated for Dashboard 'Pay Now' Feature)
+exports.resumePayment = async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    if (order.paymentStatus === "Paid")
+      return res.status(400).json({ message: "Order already paid" });
+
+    // Check if assets were purged by Cron (Security Handshake)
+    if (order.filesDeleted) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment window closed: Files purged after 24h limit.",
+      });
+    }
+
+    const options = {
+      amount: Math.round(order.totalAmount * 100),
+      currency: "INR",
+      receipt: `re_receipt_${Date.now()}`,
+    };
+
+    const rzpOrder = await razorpayInstance.orders.create(options);
+    order.razorpayOrderId = rzpOrder.id; // Refresh Razorpay Order ID
+    await order.save();
+
+    res.json({
+      success: true,
+      razorpayOrder: rzpOrder,
+      order,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to resume payment session." });
+  }
+};
+
+// 3. FETCH USER ORDERS (Restored original lean query)
 exports.getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
@@ -109,15 +190,6 @@ exports.getMyOrders = async (req, res) => {
       .lean();
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: "Error" });
-  }
-};
-exports.getOrderById = async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id).lean();
-    if (!order) return res.status(404).json({ message: "Not Found" });
-    res.json(order);
-  } catch (error) {
-    res.status(500).json({ message: "Error" });
+    res.status(500).json({ success: false, message: "Error fetching orders" });
   }
 };

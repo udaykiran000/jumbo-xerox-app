@@ -1,208 +1,194 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { FaFacebook, FaInstagram, FaWhatsapp } from "react-icons/fa";
-import { MapPin, Phone, Mail, ChevronRight, Printer } from "lucide-react";
+import {
+  FiFacebook,
+  FiTwitter,
+  FiInstagram,
+  FiPhone,
+  FiMail,
+  FiMapPin,
+  FiEye,
+  FiCheckCircle,
+  FiTruck,
+  FiRefreshCw,
+} from "react-icons/fi";
+import { FaWhatsapp } from "react-icons/fa";
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
-  const footerLinkStyle =
-    "text-slate-400 hover:text-cyan-400 transition-all duration-300 flex items-center gap-1 group";
-
   return (
-    <footer className="relative bg-slate-950 border-t border-white/5 pt-20 pb-10 overflow-hidden font-sans">
-      {/* Decorative Background Element */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
-
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-          {/* 1. Brand Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="space-y-6"
-          >
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
-                <Printer size={24} className="text-white" />
-              </div>
-              <h2 className="text-2xl font-black text-white tracking-tighter">
-                Jumbo{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-                  Xerox
-                </span>
-              </h2>
+    <footer className="relative bg-[#0f172a] text-gray-100 overflow-hidden rounded-t-[50px] md:rounded-t-[100px]">
+      {/* 1. FEATURES SECTION (From Home.jsx) */}
+      <section className="py-20 border-b border-gray-800/50">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16 text-center px-4">
+          <div className="flex flex-col items-center group">
+            <div className="bg-blue-600 p-8 rounded-[35px] mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
+              <FiCheckCircle size={40} />
             </div>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Revolutionizing online printing with high-quality laser tech and
-              lightning-fast delivery. Upload, pay, and relax.
+            <p className="font-black uppercase text-xs tracking-[0.3em]">
+              Premium Quality
             </p>
-            <div className="flex space-x-3">
-              <SocialIcon
-                href="#"
-                icon={<FaWhatsapp />}
-                color="hover:bg-green-500/20 hover:text-green-500"
-              />
-              <SocialIcon
-                href="#"
-                icon={<FaInstagram />}
-                color="hover:bg-pink-500/20 hover:text-pink-500"
-              />
-              <SocialIcon
-                href="#"
-                icon={<FaFacebook />}
-                color="hover:bg-blue-500/20 hover:text-blue-500"
-              />
+          </div>
+          <div className="flex flex-col items-center group">
+            <div className="bg-emerald-500 p-8 rounded-[35px] mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
+              <FiTruck size={40} />
             </div>
-          </motion.div>
+            <p className="font-black uppercase text-xs tracking-[0.3em]">
+              Free Delivery
+            </p>
+          </div>
+          <div className="flex flex-col items-center group">
+            <div className="bg-orange-500 p-8 rounded-[35px] mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
+              <FiRefreshCw size={40} />
+            </div>
+            <p className="font-black uppercase text-xs tracking-[0.3em]">
+              30 Days Return
+            </p>
+          </div>
+        </div>
+      </section>
 
-          {/* 2. Quick Links */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-          >
-            <h3 className="text-white font-black uppercase text-[10px] tracking-[0.2em] mb-6">
+      {/* Background Animated Glows */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div className="absolute top-40 left-0 w-[500px] h-[500px] bg-blue-500 rounded-full blur-[120px] animate-float"></div>
+        <div
+          className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-500 rounded-full blur-[120px] animate-float"
+          style={{ animationDelay: "1s" }}
+        ></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
+          {/* Brand Info */}
+          <div className="space-y-6">
+            <h3 className="text-3xl font-black bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent uppercase tracking-tighter">
+              Jumbo Xerox
+            </h3>
+            <p className="text-gray-400 text-sm leading-relaxed text-justify">
+              Guntur's premier digital print destination. Whether you are a
+              student or a professional, we deliver quality prints right to your
+              doorstep.
+            </p>
+            <div className="flex gap-4">
+              {[FiFacebook, FiTwitter, FiInstagram].map((Icon, i) => (
+                <a
+                  key={i}
+                  href="#"
+                  className="w-12 h-12 rounded-2xl bg-gray-800/50 flex items-center justify-center hover:bg-blue-600 transition-all border border-gray-700 shadow-xl"
+                >
+                  <Icon size={20} />
+                </a>
+              ))}
+              <a
+                href="https://wa.me/919441081125"
+                className="w-12 h-12 rounded-2xl bg-gray-800/50 flex items-center justify-center hover:bg-green-600 transition-all border border-gray-700 shadow-xl"
+              >
+                <FaWhatsapp size={22} />
+              </a>
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h4 className="text-white font-black uppercase tracking-widest text-sm mb-8 border-l-4 border-blue-500 pl-3">
               Quick Links
-            </h3>
-            <ul className="space-y-4 text-sm font-medium">
-              <li>
-                <Link to="/services" className={footerLinkStyle}>
-                  <ChevronRight
-                    size={14}
-                    className="opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all"
-                  />{" "}
-                  Pricing
-                </Link>
+            </h4>
+            <ul className="space-y-4 text-sm text-gray-400 font-medium">
+              {[
+                { name: "Home", path: "/" },
+                { name: "Quick Prints", path: "/quick-print" },
+                { name: "Business Cards", path: "/business-card" },
+                { name: "Plan Printing", path: "/plan-printing" },
+                { name: "Track Order", path: "/dashboard" },
+              ].map((l) => (
+                <li key={l.name}>
+                  <Link
+                    to={l.path}
+                    className="hover:text-blue-400 transition-all hover:pl-2"
+                  >
+                    -- {l.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Support Info */}
+          <div>
+            <h4 className="text-white font-black uppercase tracking-widest text-sm mb-8 border-l-4 border-emerald-500 pl-3">
+              Support
+            </h4>
+            <ul className="space-y-5 text-sm text-gray-400">
+              <li className="flex items-center gap-4 group">
+                <FiPhone
+                  className="text-blue-400 group-hover:scale-125 transition-transform"
+                  size={18}
+                />{" "}
+                +91 9441081125
               </li>
-              <li>
-                <Link to="/track" className={footerLinkStyle}>
-                  <ChevronRight
-                    size={14}
-                    className="opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all"
-                  />{" "}
-                  Track Order
-                </Link>
+              <li className="flex items-center gap-4 group">
+                <FiMail
+                  className="text-emerald-400 group-hover:scale-125 transition-transform"
+                  size={18}
+                />{" "}
+                info@jumboxerox.com
               </li>
-              <li>
-                <Link to="/quick-print" className={footerLinkStyle}>
-                  <ChevronRight
-                    size={14}
-                    className="opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all"
-                  />{" "}
-                  Start Printing
-                </Link>
-              </li>
-              <li>
-                <Link to="/login" className={footerLinkStyle}>
-                  <ChevronRight
-                    size={14}
-                    className="opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-0 transition-all"
-                  />{" "}
-                  Partner Login
-                </Link>
+              <li className="flex items-start gap-4 group">
+                <FiMapPin className="text-orange-400 mt-1" size={18} />{" "}
+                <span>
+                  9th Line, Arundulpet,
+                  <br />
+                  Guntur, AP - 522001
+                </span>
               </li>
             </ul>
-          </motion.div>
+          </div>
 
-          {/* 3. Support & Policies */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-          >
-            <h3 className="text-white font-black uppercase text-[10px] tracking-[0.2em] mb-6">
+          {/* Legal */}
+          <div>
+            <h4 className="text-white font-black uppercase tracking-widest text-sm mb-8 border-l-4 border-purple-500 pl-3">
               Legal
-            </h3>
-            <ul className="space-y-4 text-sm font-medium">
-              <li>
-                <Link to="/terms" className={footerLinkStyle}>
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link to="/privacy" className={footerLinkStyle}>
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/refund" className={footerLinkStyle}>
-                  Refund Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className={footerLinkStyle}>
-                  Contact Support
-                </Link>
-              </li>
+            </h4>
+            <ul className="space-y-4 text-sm text-gray-400 font-medium">
+              {[
+                "About Us",
+                "Privacy Policy",
+                "Refund Policy",
+                "Terms & Conditions",
+              ].map((l) => (
+                <li key={l}>
+                  <Link
+                    to="#"
+                    className="hover:text-purple-400 transition-all hover:pl-2"
+                  >
+                    -- {l}
+                  </Link>
+                </li>
+              ))}
             </ul>
-          </motion.div>
-
-          {/* 4. Contact Info */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="space-y-6"
-          >
-            <h3 className="text-white font-black uppercase text-[10px] tracking-[0.2em] mb-6">
-              Store Location
-            </h3>
-            <div className="space-y-4">
-              <ContactItem
-                icon={<MapPin size={18} />}
-                text="Main Road, Guntur, AP - 522002"
-              />
-              <ContactItem icon={<Phone size={18} />} text="+91 98765 43210" />
-              <ContactItem
-                icon={<Mail size={18} />}
-                text="support@jumbo-xerox.com"
-              />
-            </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] font-bold uppercase tracking-widest text-slate-600">
-          <p>© {currentYear} Jumbo Xerox — Digital Printing Reimagined.</p>
-          <div className="flex gap-6">
-            <span className="hover:text-slate-400 transition-colors cursor-pointer">
-              Built with ❤️ for Students
+        <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-8">
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
+            © 2026 New Cyber Shoppee Jumbo Xerox. All Rights Reserved.
+          </p>
+
+          <div className="flex items-center gap-3 px-6 py-3 bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl animate-pulse-glow">
+            <FiEye className="text-blue-400" size={20} />
+            <span className="text-gray-400 text-xs font-black uppercase">
+              Visitors:
             </span>
+            <strong className="text-blue-400 text-lg font-black shimmer-text">
+              664
+            </strong>
           </div>
+
+          <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest">
+            Designed by WebnApp Studio
+          </p>
         </div>
       </div>
     </footer>
-  );
-}
-
-/* --- Helper Components --- */
-
-function SocialIcon({ href, icon, color }) {
-  return (
-    <a
-      href={href}
-      className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 transition-all duration-300 border border-white/5 ${color} hover:-translate-y-1 hover:shadow-lg`}
-    >
-      {icon}
-    </a>
-  );
-}
-
-function ContactItem({ icon, text }) {
-  return (
-    <div className="flex items-start gap-3 group">
-      <div className="text-cyan-500 mt-0.5 group-hover:scale-110 transition-transform">
-        {icon}
-      </div>
-      <p className="text-slate-400 text-sm leading-snug group-hover:text-slate-200 transition-colors">
-        {text}
-      </p>
-    </div>
   );
 }

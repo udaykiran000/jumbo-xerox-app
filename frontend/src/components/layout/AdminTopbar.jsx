@@ -279,7 +279,7 @@ const AdminTopbar = ({ onMenuClick }) => {
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors font-bold text-left"
                     >
-                      <Settings size={16} /> Admin Settings
+                      <AdminSettings size={16} /> Admin Settings
                     </button>
                     <div className="h-[1px] bg-white/5 my-2" />
                     <button

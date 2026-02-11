@@ -9,9 +9,8 @@ const orderSchema = new mongoose.Schema(
         url: { type: String, required: true },
       },
     ],
-    serviceType: { type: String, default: "QuickPrint" },
-    
-    // Print Details
+    serviceType: { type: String, default: "Quick Print" },
+
     details: {
       pages: { type: Number, required: true },
       copies: { type: Number, default: 1 },
@@ -21,35 +20,50 @@ const orderSchema = new mongoose.Schema(
       binding: String,
       lamination: String,
       cover: String,
+      orientation: String, // Orientation added
       instructions: String,
     },
-    
+
     totalAmount: { type: Number, required: true },
-    
-    // 👇 LOGISTICS INFO (Updated) 👇
-    deliveryMode: { 
-        type: String, 
-        enum: ["Pickup", "Delivery"], 
-        default: "Pickup" 
+
+    deliveryMode: {
+      type: String,
+      enum: ["Pickup", "Delivery"],
+      default: "Pickup",
     },
-    // IDI SNAPSHOT: User profile link kakunda, Address ni ikkade save chestam
+
+    // Snapshot for Home Delivery
     shippingAddress: {
-        street: String,
-        city: String,
-        state: String,
-        pincode: String
+      street: String,
+      city: String,
+      state: String,
+      pincode: String,
+    },
+
+    // Snapshot for Store Pickup (Humanised Feature)
+    pickupDetails: {
+      name: String,
+      phone: String,
     },
 
     paymentMethod: { type: String, enum: ["Online", "Cash"], required: true },
-    paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
-    status: { type: String, enum: ["Pending", "Processing", "Completed", "Cancelled"], default: "Pending" },
-    
-    // Integrations
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Paid", "Failed"],
+      default: "Pending",
+    },
+    status: {
+      type: String,
+      enum: ["Pending", "Processing", "Completed", "Cancelled", "Archived"],
+      default: "Pending",
+    },
+
     razorpayOrderId: { type: String },
     paymentId: { type: String },
     shipmentId: { type: String },
     awbNumber: { type: String },
     courierName: { type: String },
+    filesDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

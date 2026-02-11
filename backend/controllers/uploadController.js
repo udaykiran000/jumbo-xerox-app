@@ -1,143 +1,137 @@
-const fs = require("fs");
+const Busboy = require("busboy");
+const fsSync = require("fs");
+const fs = require("fs").promises;
 const path = require("path");
 const { Worker } = require("worker_threads");
-const checkDiskSpace = require("check-disk-space").default;
+const archiver = require("archiver");
+const Order = require("../models/Order");
 
-const UPLOADS_BASE = path.resolve(process.cwd(), "uploads");
-const TEMP_BASE = path.join(UPLOADS_BASE, "temp");
-const FILES_BASE = path.join(UPLOADS_BASE, "files");
+const TEMP_BASE = path.join(process.cwd(), "uploads", "temp");
+const FILES_BASE = path.join(process.cwd(), "uploads", "files");
 
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+// 1. Status Check
+exports.getUploadStatus = async (req, res) => {
+  try {
+    const { uploadId } = req.query;
+    const tempDir = path.join(TEMP_BASE, uploadId);
+    if (fsSync.existsSync(tempDir)) {
+      const files = await fs.readdir(tempDir);
+      const valid = files.filter(
+        (f) => f.startsWith("part_") && !f.endsWith(".tmp"),
+      );
+      let bytes = 0;
+      valid.forEach(
+        (f) => (bytes += fsSync.statSync(path.join(tempDir, f)).size),
+      );
+      return res.json({
+        success: true,
+        uploadedBytes: bytes,
+        nextIndex: valid.length,
+      });
+    }
+    res.json({ success: true, uploadedBytes: 0, nextIndex: 0 });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 };
 
-// --- MERGE QUEUE LOGIC ---
-let activeMerges = 0;
-const mergeQueue = [];
+// 2. Upload Chunk (No-Deadlock Version)
+exports.uploadChunk = async (req, res) => {
+  const busboy = Busboy({ headers: req.headers });
+  let uploadId, chunkIndex;
+  let savePromise = null;
 
-const processMergeQueue = () => {
-  if (activeMerges >= 3 || mergeQueue.length === 0) return;
+  busboy.on("field", (name, val) => {
+    if (name === "uploadId") uploadId = val;
+    if (name === "chunkIndex") chunkIndex = val;
+  });
 
-  const { res, tempDir, finalPath, totalChunks, finalFileName, fileName } =
-    mergeQueue.shift();
-  activeMerges++;
+  busboy.on("file", (name, file, info) => {
+    // If fields haven't arrived yet, we must wait OR the order must be fixed on frontend.
+    // Fixed order (metadata first) is much more reliable.
+    if (!uploadId || chunkIndex === undefined) {
+      console.error("[BUSBOY] Field order error. Meta must come before file.");
+      file.resume();
+      return;
+    }
+
+    const tempDir = path.join(TEMP_BASE, uploadId);
+    if (!fsSync.existsSync(tempDir))
+      fsSync.mkdirSync(tempDir, { recursive: true });
+
+    const finalPath = path.join(tempDir, `part_${chunkIndex}`);
+    const tmpPath = `${finalPath}.tmp`;
+    const writeStream = fsSync.createWriteStream(tmpPath);
+
+    savePromise = new Promise((resolve, reject) => {
+      file.pipe(writeStream);
+      writeStream.on("finish", () => {
+        try {
+          fsSync.renameSync(tmpPath, finalPath);
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      });
+      writeStream.on("error", reject);
+    });
+  });
+
+  busboy.on("finish", async () => {
+    try {
+      if (savePromise) await savePromise;
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ success: false });
+    }
+  });
+
+  req.pipe(busboy);
+};
+
+// 3. Merge Logic
+exports.mergeChunks = async (req, res) => {
+  const { uploadId, fileName, totalChunks } = req.body;
+  const tempDir = path.join(TEMP_BASE, uploadId);
+  const finalFileName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
+  const finalPath = path.join(FILES_BASE, finalFileName);
+
+  if (!fsSync.existsSync(FILES_BASE))
+    await fs.mkdir(FILES_BASE, { recursive: true });
 
   const worker = new Worker(path.join(__dirname, "../workers/mergeWorker.js"), {
     workerData: { tempDir, finalPath, totalChunks },
   });
 
   worker.on("message", (msg) => {
-    activeMerges--;
     if (msg.success) {
-      if (fs.existsSync(tempDir))
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      res.json({
-        success: true,
-        url: `/uploads/files/${finalFileName}`,
-        fileName,
-        hash: msg.hash, // SHA-256 integrity hash
-      });
-    } else {
-      res.status(500).json({ success: false, message: msg.error });
-    }
-    processMergeQueue(); // Next file in queue
+      fsSync.rmSync(tempDir, { recursive: true, force: true });
+      res.json({ success: true, url: `/uploads/files/${finalFileName}` });
+    } else res.status(500).json({ success: false, message: msg.error });
   });
-
-  worker.on("error", (e) => {
-    activeMerges--;
-    res.status(500).json({ success: false, message: e.message });
-    processMergeQueue();
-  });
+  worker.on("error", (e) =>
+    res.status(500).json({ success: false, message: e.message }),
+  );
 };
 
-// 1. Admin System Stats
-exports.getSystemStats = async (req, res) => {
+// 4. Download Zip (Kept as original)
+exports.downloadOrderZip = async (req, res) => {
+  const { orderId } = req.params;
   try {
-    const space = await checkDiskSpace(process.cwd());
-    res.json({
-      success: true,
-      free: (space.free / 1e9).toFixed(2) + " GB",
-      percentFree: ((space.free / space.size) * 100).toFixed(0) + "%",
-    });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
-};
-
-// 2. Get Upload Status (Resumable)
-exports.getUploadStatus = async (req, res) => {
-  try {
-    const { uploadId } = req.query;
-    const tempDir = path.join(TEMP_BASE, uploadId);
-    ensureDir(TEMP_BASE);
-    if (fs.existsSync(tempDir)) {
-      const chunks = fs
-        .readdirSync(tempDir)
-        .filter((f) => f.includes("part_")).length;
-      return res.json({ success: true, uploadedChunks: chunks });
+    const order = await Order.findById(orderId).populate("user", "name");
+    const customerName = order.user?.name?.replace(/\s+/g, "_") || "Customer";
+    const shortId = orderId.slice(-6).toUpperCase();
+    res.attachment(`Order_${shortId}_${customerName}.zip`);
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    archive.pipe(res);
+    for (const file of order.files) {
+      const originalFileName = path.basename(file.url);
+      const filePath = path.join(FILES_BASE, originalFileName);
+      if (fsSync.existsSync(filePath))
+        archive.file(filePath, { name: `${shortId}_${file.name}` });
     }
-    res.json({ success: true, uploadedChunks: 0 });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
-};
-
-// 3. Upload Chunk
-exports.uploadChunk = async (req, res) => {
-  try {
-    const { chunkIndex, uploadId } = req.body;
-    const chunkFile = req.file;
-    if (!chunkFile) throw new Error("No chunk received.");
-
-    const tempDir = path.join(TEMP_BASE, uploadId);
-    ensureDir(tempDir);
-
-    const chunkPath = path.join(tempDir, `part_${chunkIndex}`);
-    fs.copyFileSync(chunkFile.path, chunkPath);
-    fs.unlinkSync(chunkFile.path);
-
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
-};
-
-// 4. Merge Chunks (With Queue)
-exports.mergeChunks = async (req, res) => {
-  const { uploadId, fileName, totalChunks } = req.body;
-  try {
-    const tempDir = path.join(TEMP_BASE, uploadId);
-    const finalFileName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
-    const finalPath = path.join(FILES_BASE, finalFileName);
-    ensureDir(FILES_BASE);
-
-    // Add to queue
-    mergeQueue.push({
-      res,
-      tempDir,
-      finalPath,
-      totalChunks,
-      finalFileName,
-      fileName,
-    });
-    processMergeQueue();
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
-  }
-};
-
-exports.getSystemStats = async (req, res) => {
-  try {
-    const space = await d(process.cwd());
-    const used = space.size - space.free; // Used calculation
-    res.json({
-      success: 1,
-      total: (x.size / 1e9).toFixed(2) + " GB",
-      free: (x.free / 1e9).toFixed(2) + " GB",
-      used: (used / 1e9).toFixed(2) + " GB", // <---
-      percentFree: ((x.free / x.size) * 100).toFixed(0) + "%",
-    });
-  } catch (i) {
-    res.status(500).json({ success: 0, message: i.message });
+    await archive.finalize();
+  } catch (error) {
+    res.status(500).json({ message: "Zip failed" });
   }
 };

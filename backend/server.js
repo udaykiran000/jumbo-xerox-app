@@ -10,18 +10,25 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: "200mb" }));
-app.use(express.urlencoded({ limit: "200mb", extended: true }));
+app.use(express.json({ limit: "500mb" }));
+app.use(express.urlencoded({ limit: "500mb", extended: true }));
 
-// --- FIXED: Mapping both paths to uploads/files folder ---
+// Mapping both paths to uploads/files folder
+// Order matters: more specific routes first
+app.use(
+  "/api/uploads/files",
+  express.static(path.join(__dirname, "uploads", "files"))
+);
+app.use(
+  "/uploads/files",
+  express.static(path.join(__dirname, "uploads", "files"))
+);
 app.use(
   "/api/uploads",
   express.static(path.join(__dirname, "uploads", "files"))
 );
 app.use("/uploads", express.static(path.join(__dirname, "uploads", "files")));
 
-// --- OLD METHOD: Serving frontend from backend/public folder ---
-//
 const publicPath = path.join(__dirname, "public");
 app.use(express.static(publicPath));
 
@@ -41,13 +48,26 @@ app.use("/api/upload", require("./routes/uploadRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/payments", require("./routes/paymentRoutes"));
 
-// --- FIXED: Catch-all route with Node v22 compatible syntax ---
-// '*'
-app.get(/.*/, (req, res) => {
-  //
-  if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+// Catch-all route with Node v22 compatible syntax
+//Professional Catch-all Route
+app.get("*path", (req, res) => {
+  // 1. Check if the request is for an API that doesn't exist
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({
+      success: false,
+      message: `API Route ${req.path} not found on this server`,
+    });
   }
+
+  // 2. If it's NOT an API route, serve the React Frontend
+  // This allows React Router to handle page navigation
+  res.sendFile(path.join(__dirname, "public", "index.html"), (err) => {
+    if (err) {
+      res
+        .status(500)
+        .send("Frontend build not found. Run 'npm run build' in frontend.");
+    }
+  });
 });
 
 app.use(errorHandler);

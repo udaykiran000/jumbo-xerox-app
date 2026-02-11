@@ -1,54 +1,133 @@
-import PriceCard from "../../components/common/PriceCard";
-import QuickPrintForm from "../../components/quickprint/QuickPrintForm";
+import React from "react";
+import { Link } from "react-router-dom";
+import {
+  FiCheckCircle,
+  FiTruck,
+  FiRefreshCw,
+  FiPhone,
+  FiMail,
+  FiMapPin,
+} from "react-icons/fi";
+// Import images
+import a4Image from "../../assets/a4.jpg";
+import planImage from "../../assets/plan.jpg";
+import bcardImage from "../../assets/bcard.jpg";
 
-export default function Services() {
+const ServicesPage = () => {
+  const serviceCards = [
+    {
+      title: "Quick Printouts",
+      image: a4Image,
+      popular: true,
+      desc: "Fast and crisp document printing for reports, thesis, assignments, and office documents.",
+      features: [
+        "A4, A3, FLS, A0, A1, A2",
+        "Color & Grayscale Options",
+        "All Binding Options Available",
+      ],
+      link: "/quick-print", // Matches route in App.js
+    },
+    {
+      title: "Plan Print Outs",
+      image: planImage,
+      desc: "Large format printing for architectural drawings, engineering plans (CAD), and posters.",
+      features: [
+        "Sizes: A0, A1, A2",
+        "High Precision Plotter",
+        "90gsm Bond Paper",
+      ],
+      link: "/plan-printing", // Matches route in App.js
+    },
+    {
+      title: "Business Cards",
+      image: bcardImage,
+      desc: "Make a lasting impression with our premium business cards. Available in matte, gloss, and textured finishes.",
+      features: ["300gsm & 350gsm Cardstock", "Single or Double Sided"],
+      link: "/business-cards", // Matches route in App.js
+    },
+  ];
+
   return (
-    <div className="w-full">
-      {/* ===== QUICK PRINT SECTION ===== */}
-      <div className="border-t bg-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          {/* 🔥 FULL QUICK PRINT COMPONENT */}
-          <QuickPrintForm />
+    <div className="min-h-screen bg-slate-50">
+      {/* Header Section */}
+      <section className="pt-20 pb-12 px-4">
+        <div className="max-w-5xl mx-auto bg-white rounded-3xl p-12 shadow-sm border border-slate-100 text-center">
+          <h1 className="text-5xl font-extrabold text-indigo-900 mb-4 tracking-tight">
+            Our Printing Services
+          </h1>
+          <p className="text-slate-500 text-lg font-medium">
+            Professional printing solutions tailored for your needs.
+          </p>
         </div>
-      </div>
-      {/* ===== PRICING SECTION ===== */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <h1 className="text-4xl font-bold text-center text-gray-800 mb-4">
-          Our Services & Pricing
-        </h1>
+      </section>
 
-        <p className="text-center text-gray-600 mb-12">
-          Transparent pricing. No hidden charges.
-        </p>
+      {/* Services Grid */}
+      <section className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+        {serviceCards.map((card, idx) => (
+          <Link
+            to={card.link}
+            key={idx}
+            className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 flex flex-col group hover:translate-y-[-8px] transition-all duration-300"
+          >
+            <div className="relative h-56 overflow-hidden">
+              <img
+                src={card.image}
+                alt={card.title}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              />
+              {card.popular && (
+                <div className="absolute top-4 right-[-35px] bg-gradient-to-r from-orange-400 to-yellow-400 text-white text-[10px] font-bold py-1 px-10 rotate-45 shadow-md">
+                  POPULAR
+                </div>
+              )}
+            </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <PriceCard
-            title="Black & White (A4)"
-            price="₹2.00"
-            sub="per page"
-            features={["75 GSM Paper", "Laser Quality", "Both Sides Available"]}
-          />
+            <div className="p-8 flex flex-col flex-grow">
+              <h3 className="text-2xl font-bold text-slate-800 mb-4">
+                {card.title}
+              </h3>
+              <p className="text-slate-500 text-sm leading-relaxed mb-6 flex-grow">
+                {card.desc}
+              </p>
 
-          <PriceCard
-            title="Color Print (A4)"
-            price="₹10.00"
-            sub="per page"
-            features={["High Quality Bond", "Vivid Colors", "Images & Text"]}
-            bg="bg-blue-50 border-blue-200"
-          />
+              <ul className="space-y-3 mb-8">
+                {card.features.map((f, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center text-sm text-slate-600 font-medium"
+                  >
+                    <FiCheckCircle className="text-indigo-500 mr-2 w-4 h-4" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
 
-          <PriceCard
-            title="Spiral Binding"
-            price="₹40.00"
-            sub="per book"
-            features={[
-              "Plastic Sheet Cover",
-              "Durable Coil",
-              "Up to 300 pages",
-            ]}
-          />
+              <div className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-center font-bold rounded-2xl shadow-lg group-hover:shadow-indigo-200 transition-all uppercase tracking-widest text-sm">
+                Order Now
+              </div>
+            </div>
+          </Link>
+        ))}
+      </section>
+
+      {/* Info Badges */}
+      <section className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 flex items-center gap-4">
+          <div className="bg-white p-2 rounded-full text-indigo-500 shadow-sm">
+            <FiMapPin />
+          </div>
+          <p className="text-xs font-semibold text-indigo-900 leading-tight">
+            Store Pickup:
+            <br />
+            <span className="text-slate-500 font-normal text-[11px]">
+              Available at Guntur Branch
+            </span>
+          </p>
         </div>
-      </div>
+        {/* ... Other badges remain same ... */}
+      </section>
     </div>
   );
-}
+};
+
+export default ServicesPage;

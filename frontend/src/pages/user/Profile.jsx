@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../services/api";
 import { toast } from "react-hot-toast";
 import {
   FaUser,
@@ -12,7 +12,6 @@ import {
 
 export default function Profile() {
   //
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
   const [profile, setProfile] = useState({
     name: "",
@@ -34,12 +33,9 @@ export default function Profile() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        // BASE_URL వాడాము
-        const { data } = await axios.get(`${BASE_URL}/api/users/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const { data } = await api.get(`/users/profile`);
         setProfile(data);
+        console.log(data);
       } catch (err) {
         console.log(err);
         toast.error("Failed to load profile");
@@ -48,19 +44,16 @@ export default function Profile() {
       }
     };
     fetchProfile();
-  }, [BASE_URL]);
+  }, []);
 
   // 2. Update Basic Info (Name/Phone)
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token");
-      // BASE_URL వాడాము
-      await axios.put(
-        `${BASE_URL}/api/users/profile`,
-        { name: profile.name, phone: profile.phone },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put("/users/profile", {
+        name: profile.name,
+        phone: profile.phone,
+      });
       toast.success("Profile Updated!");
     } catch (err) {
       console.log(err);
@@ -72,13 +65,7 @@ export default function Profile() {
   const handleAddAddress = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token");
-      // BASE_URL వాడాము
-      const { data } = await axios.post(
-        `${BASE_URL}/api/users/address`,
-        newAddress,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await api.post("/users/address", newAddress);
       setProfile({ ...profile, addresses: data }); // UI update
       setShowModal(false);
       setNewAddress({ street: "", city: "", state: "", pincode: "" }); // clear
