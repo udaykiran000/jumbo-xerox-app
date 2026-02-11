@@ -13,26 +13,19 @@ app.use(cors());
 app.use(express.json({ limit: "500mb" }));
 app.use(express.urlencoded({ limit: "500mb", extended: true }));
 
-// Mapping both paths to uploads/files folder
-// Order matters: more specific routes first
-app.use(
-  "/api/uploads/files",
-  express.static(path.join(__dirname, "uploads", "files"))
-);
-app.use(
-  "/uploads/files",
-  express.static(path.join(__dirname, "uploads", "files"))
-);
-app.use(
-  "/api/uploads",
-  express.static(path.join(__dirname, "uploads", "files"))
-);
-app.use("/uploads", express.static(path.join(__dirname, "uploads", "files")));
+// --- UPLOADS STATIC FILES ---
+const uploadsPath = path.join(__dirname, "uploads", "files");
+app.use("/api/uploads/files", express.static(uploadsPath));
+app.use("/uploads/files", express.static(uploadsPath));
+app.use("/api/uploads", express.static(uploadsPath));
+app.use("/uploads", express.static(uploadsPath));
 
-const publicPath = path.join(__dirname, "public");
-app.use(express.static(publicPath));
+// --- FRONTEND STATIC FILES ---
+// Render  frontend/dist  path
+const buildPath = path.join(__dirname, "..", "frontend", "dist");
+app.use(express.static(buildPath));
 
-// Database
+// --- DATABASE CONNECTION ---
 mongoose
   .connect(process.env.MONGO_URL)
   .then(() => console.log("✅ MongoDB Connected"))
@@ -40,7 +33,7 @@ mongoose
 
 startCronJobs();
 
-// Routes
+// --- API ROUTES ---
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/orders", require("./routes/orderRoutes"));
@@ -48,29 +41,28 @@ app.use("/api/upload", require("./routes/uploadRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/payments", require("./routes/paymentRoutes"));
 
-// Catch-all route with Node v22 compatible syntax
-//Professional Catch-all Route
-app.get("*path", (req, res) => {
-  // 1. Check if the request is for an API that doesn't exist
+// --- CATCH-ALL ROUTE FOR FRONTEND ---
+app.get("*", (req, res) => {
+  // 1. API route
   if (req.path.startsWith("/api")) {
     return res.status(404).json({
       success: false,
-      message: `API Route ${req.path} not found on this server`,
+      message: `API Route ${req.path} not found`,
     });
   }
 
-  // 2. If it's NOT an API route, serve the React Frontend
-  // This allows React Router to handle page navigation
-  res.sendFile(path.join(__dirname, "public", "index.html"), (err) => {
+  //
+  res.sendFile(path.join(buildPath, "index.html"), (err) => {
     if (err) {
+      console.error("Error sending index.html:", err);
       res
         .status(500)
-        .send("Frontend build not found. Run 'npm run build' in frontend.");
+        .send("Frontend build not found. Path checked: " + buildPath);
     }
   });
 });
 
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000; // Render port
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
