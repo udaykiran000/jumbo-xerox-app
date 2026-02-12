@@ -91,6 +91,16 @@ exports.uploadChunk = async (req, res) => {
 
 // 3. Merge Logic
 exports.mergeChunks = async (req, res) => {
+  console.log("====== MERGE DEBUG ======");
+  console.log("FILES_BASE:", FILES_BASE);
+  console.log("FILES_BASE Exists:", fsSync.existsSync(FILES_BASE));
+
+  if (fsSync.existsSync(FILES_BASE)) {
+    console.log("FILES INSIDE:", fsSync.readdirSync(FILES_BASE));
+  }
+
+  console.log("========================");
+
   const { uploadId, fileName, totalChunks } = req.body;
   const tempDir = path.join(TEMP_BASE, uploadId);
   const finalFileName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
