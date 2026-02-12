@@ -57,15 +57,25 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await api.post("/auth/register-request", {
+      const { data } = await api.post("/auth/register-request", {
         name,
         email,
         phone,
         password,
       });
-      toast.success("Verification code sent!");
       setStep(2);
       setOtpTimer(60);
+
+      // DEV MODE: Auto-fill or show OTP
+      if (data.otp) {
+        toast.success(`DEV MODE: OTP Auto-filled: ${data.otp}`, {
+          duration: 6000,
+        });
+        console.log("DEV OTP:", data.otp);
+        setOtpValue(data.otp); // Auto-fill
+      } else {
+        toast.success("Verification code sent!");
+      }
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Verification trigger failed",

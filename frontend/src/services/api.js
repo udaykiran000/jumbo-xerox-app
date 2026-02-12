@@ -22,4 +22,15 @@ api.interceptors.request.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => {
+    console.log(`[DEBUG-API-RES] ${response.config.url}:`, response.data);
+    return response;
+  },
+  (error) => {
+    console.error("[DEBUG-API-ERR] Response Error:", error.response?.data);
+    return Promise.reject(error);
+  }
+);
+
 export default api;

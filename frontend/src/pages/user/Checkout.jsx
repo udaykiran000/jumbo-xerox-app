@@ -115,10 +115,20 @@ const Checkout = () => {
     // OTP Protocol for New Pickup Numbers
     setIsSubmitting(true);
     try {
-      await api.post("/admin/otp/send", { phone: targetPhone });
+      const { data } = await api.post("/admin/otp/send", { phone: targetPhone });
       setShowOTPModal(true);
       setOtpTimer(60);
-      toast.success("Verification code sent!");
+
+      // DEV MODE: Auto-fill or show OTP
+      if (data.otp) {
+        toast.success(`DEV MODE: OTP Auto-filled: ${data.otp}`, {
+          duration: 6000,
+        });
+        console.log("DEV OTP:", data.otp);
+        setOtpValue(data.otp); // Auto-fill
+      } else {
+        toast.success("Verification code sent!");
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to send OTP");
     } finally {
@@ -142,6 +152,10 @@ const Checkout = () => {
       setIsVerifying(false);
     }
   };
+
+  // --- 3. MOCK PAYMENT STATE ---
+  const [showMockPayment, setShowMockPayment] = useState(false);
+  const [mockOrderData, setMockOrderData] = useState(null);
 
   const proceedToOrderCreation = async () => {
     try {
@@ -169,9 +183,38 @@ const Checkout = () => {
 
       const { data } = await api.post("/orders", payload);
       setShowOTPModal(false);
-      await displayRazorpay(data, user, navigate);
+
+      // Mock Payment for Development
+      if (import.meta.env.MODE === "development") {
+        setMockOrderData(data);
+        setShowMockPayment(true);
+      } else {
+        await displayRazorpay(data, user, navigate);
+      }
     } catch (e) {
       toast.error("Order process failed");
+    }
+  };
+
+  const handleMockPaymentAction = async (success) => {
+    setShowMockPayment(false);
+    if (!mockOrderData) return;
+
+    if (success) {
+      try {
+        await api.post("/payments/verify", {
+          razorpay_order_id: mockOrderData.razorpayOrder.id,
+          razorpay_payment_id: "mock_payment_id_" + Date.now(),
+          razorpay_signature: "mock_payment_signature",
+          dbOrderId: mockOrderData.order._id,
+        });
+        toast.success("Mock Payment Verified!");
+        navigate("/dashboard");
+      } catch (e) {
+        toast.error("Mock Verification Failed");
+      }
+    } else {
+      toast.error("Payment Cancelled (Mock)");
     }
   };
 
@@ -523,6 +566,79 @@ const Checkout = () => {
                   Register Location
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* NEW: Razorpay-like Mock Payment Modal */}
+      <AnimatePresence>
+        {showMockPayment && (
+          <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white w-full max-w-[400px] overflow-hidden rounded-2xl shadow-2xl relative flex flex-col"
+            >
+              {/* Header */}
+              <div className="bg-[#2b84ea] p-6 text-white flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-lg">Jumbo Xerox</h3>
+                  <p className="text-xs opacity-90">Test Mode Payment</p>
+                </div>
+                <div className="bg-white/20 p-2 rounded-lg">
+                  <Store size={20} />
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-8 space-y-6">
+                <div className="text-center">
+                  <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">
+                    Payable Amount
+                  </p>
+                  <h2 className="text-4xl font-black text-gray-900">
+                    ₹{grandTotal.toFixed(2)}
+                  </h2>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
+                  <div className="bg-blue-500 text-white p-1 rounded-full mt-0.5">
+                    <CheckCircle2 size={12} />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-sm text-blue-900">
+                      Development Mode
+                    </h5>
+                    <p className="text-xs text-blue-700 leading-relaxed mt-1">
+                      This is a simulated transaction. No actual money will be
+                      deducted.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-4">
+                  <button
+                    onClick={() => handleMockPaymentAction(true)}
+                    className="w-full py-4 bg-[#2b84ea] hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex justify-center items-center gap-2"
+                  >
+                    Success <ChevronRight size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleMockPaymentAction(false)}
+                    className="w-full py-4 bg-white border-2 border-gray-100 hover:bg-gray-50 text-gray-600 font-bold rounded-xl transition-all active:scale-95"
+                  >
+                    Cancel Transaction
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 p-3 text-center border-t border-gray-100">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center justify-center gap-1">
+                  <ShieldCheck size={12} /> 100% Secure (Mock)
+                </p>
+              </div>
             </motion.div>
           </div>
         )}

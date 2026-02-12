@@ -262,8 +262,19 @@ exports.sendOrderOTP = async (req, res) => {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     await OTP.findOneAndDelete({ phone });
     await OTP.create({ phone, otp: otpCode });
-    await sendSMS(phone, otpCode);
-    res.json({ success: true, message: "OTP sent" });
+    // Verify Gateway (Production)
+    if (process.env.NODE_ENV === "production") {
+      await sendSMS(phone, otpCode);
+      res.json({ success: true, message: "OTP sent" });
+    } else {
+      // Dev Mode: Return OTP
+      console.log(`[DEV-MODE] Pickup OTP for ${phone}: ${otpCode}`);
+      res.json({
+        success: true,
+        message: "OTP sent (Dev Mode)",
+        otp: otpCode,
+      });
+    }
   } catch (error) {
     res.status(500).json({ message: "Failed to send OTP" });
   }

@@ -34,10 +34,19 @@ exports.registerRequest = async (req, res) => {
     await OTP.findOneAndDelete({ phone });
     await OTP.create({ phone, otp: otpCode });
 
-    // Send SMS via Verified Gateway
-    await sendSMS(phone, otpCode);
-
-    res.json({ success: true, message: "Verification code sent to mobile." });
+    // Send SMS via Verified Gateway (Production Only)
+    if (process.env.NODE_ENV === "production") {
+      await sendSMS(phone, otpCode);
+      res.json({ success: true, message: "Verification code sent to mobile." });
+    } else {
+      // Development: Return OTP in response
+      console.log(`[DEV-MODE] OTP for ${phone}: ${otpCode}`);
+      res.json({
+        success: true,
+        message: "Development Mode: OTP captured.",
+        otp: otpCode, // Send to frontend
+      });
+    }
     console.log(`DEBUG: OTP ${otpCode} sent to ${phone}`);
   } catch (error) {
     console.error("DEBUG: Register Request Error ->", error.message);
