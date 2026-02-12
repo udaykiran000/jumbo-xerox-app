@@ -5,12 +5,12 @@ exports.verifyPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, dbOrderId } = req.body;
 
-    // 1. Mock Verification (Development Only)
+    // 1. Mock Verification (Test Mode Only)
     if (
-      process.env.NODE_ENV === "development" &&
+      process.env.PAYMENT_TEST_MODE === "true" &&
       razorpay_signature === "mock_payment_signature"
     ) {
-      console.log("[DEV-MODE] Bypassing Razorpay Signature Check");
+      console.log("[TEST-MODE] Bypassing Razorpay Signature Check");
     } else {
       // 1. Real Verification Logic (HMAC SHA256)
       const sign = razorpay_order_id + "|" + razorpay_payment_id;

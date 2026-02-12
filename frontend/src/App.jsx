@@ -34,9 +34,12 @@ import AdminShipments from "./pages/admin/AdminShipments"; // Updated from Admin
 import AdminDeleteFiles from "./pages/admin/AdminDeleteFiles"; // NEW
 import AdminContactMessages from "./pages/admin/AdminContactMessages"; // NEW
 
+import { ConfigProvider } from "./context/ConfigContext";
+
 function App() {
   return (
-    <Routes>
+    <ConfigProvider>
+      <Routes>
       {/* 1. Public Routes */}
       <Route element={<MainLayout />}>
         <Route path="/" element={<Home />} />
@@ -85,7 +88,8 @@ function App() {
           </div>
         }
       />
-    </Routes>
+      </Routes>
+    </ConfigProvider>
   );
 }
 

@@ -13,7 +13,7 @@ const SMS_CONFIG = {
  * Normalize phone to 12 digits (Adds 91 prefix)
  */
 const normalizePhone = (phone) => {
-  let p = phone.replace(/\D/g, ""); // Digits mathrame unchali
+  let p = phone.replace(/\D/g, ""); // 
   if (p.length === 10) return "91" + p;
   if (p.length === 12 && p.startsWith("91")) return p;
   return null;

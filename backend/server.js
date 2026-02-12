@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config()
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -40,6 +40,7 @@ app.use("/api/orders", require("./routes/orderRoutes"));
 app.use("/api/upload", require("./routes/uploadRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/payments", require("./routes/paymentRoutes"));
+app.use("/api/config", require("./routes/configRoutes"));
 
 // 6. Catch-all Middleware (EXPRESS 5 FIX)
 

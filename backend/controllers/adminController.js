@@ -262,16 +262,17 @@ exports.sendOrderOTP = async (req, res) => {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     await OTP.findOneAndDelete({ phone });
     await OTP.create({ phone, otp: otpCode });
-    // Verify Gateway (Production)
-    if (process.env.NODE_ENV === "production") {
+    // Verify Gateway (Production Mode)
+    // Check Granular Flag: OTP_TEST_MODE
+    if (process.env.OTP_TEST_MODE !== "true") {
       await sendSMS(phone, otpCode);
       res.json({ success: true, message: "OTP sent" });
     } else {
-      // Dev Mode: Return OTP
-      console.log(`[DEV-MODE] Pickup OTP for ${phone}: ${otpCode}`);
+      // Test Mode: Return OTP
+      console.log(`[TEST-MODE] Pickup OTP for ${phone}: ${otpCode}`);
       res.json({
         success: true,
-        message: "OTP sent (Dev Mode)",
+        message: "OTP sent (Test Mode)",
         otp: otpCode,
       });
     }

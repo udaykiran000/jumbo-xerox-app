@@ -34,16 +34,17 @@ exports.registerRequest = async (req, res) => {
     await OTP.findOneAndDelete({ phone });
     await OTP.create({ phone, otp: otpCode });
 
-    // Send SMS via Verified Gateway (Production Only)
-    if (process.env.NODE_ENV === "production") {
+    // Send SMS via Verified Gateway (Production Mode)
+    // Check Granular Flag: OTP_TEST_MODE
+    if (process.env.OTP_TEST_MODE !== "true") {
       await sendSMS(phone, otpCode);
       res.json({ success: true, message: "Verification code sent to mobile." });
     } else {
-      // Development: Return OTP in response
-      console.log(`[DEV-MODE] OTP for ${phone}: ${otpCode}`);
+      // Test Mode: Return OTP in response
+      console.log(`[TEST-MODE] OTP for ${phone}: ${otpCode}`);
       res.json({
         success: true,
-        message: "Development Mode: OTP captured.",
+        message: "Test Mode: OTP captured.",
         otp: otpCode, // Send to frontend
       });
     }

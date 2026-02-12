@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
+import { useConfig } from "../../context/ConfigContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { displayRazorpay } from "../../services/paymentService";
 
@@ -26,6 +27,7 @@ const Checkout = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const config = useConfig();
 
   // --- 1. CORE STATES (Updated for Sync) ---
   const [deliveryMode, setDeliveryMode] = useState("Pickup");
@@ -184,8 +186,8 @@ const Checkout = () => {
       const { data } = await api.post("/orders", payload);
       setShowOTPModal(false);
 
-      // Mock Payment for Development
-      if (import.meta.env.MODE === "development") {
+      // Mock Payment for Development/Test
+      if (config.paymentTestMode) {
         setMockOrderData(data);
         setShowMockPayment(true);
       } else {
