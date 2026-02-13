@@ -80,6 +80,7 @@ exports.uploadChunk = async (req, res) => {
   busboy.on("finish", async () => {
     try {
       if (savePromise) await savePromise;
+      console.log(`[UPLOAD-SERVER] Chunk ${chunkIndex} saved for ${uploadId}`);
       res.json({ success: true });
     } catch (e) {
       res.status(500).json({ success: false });
@@ -115,23 +116,59 @@ exports.mergeChunks = async (req, res) => {
 };
 
 // 4. Download Zip (Kept as original)
+// 4. Download Zip (Debugged for Render)
 exports.downloadOrderZip = async (req, res) => {
   const { orderId } = req.params;
+  console.log(`[ZIP-DEBUG] Request for Order: ${orderId}`);
+  console.log(`[ZIP-DEBUG] FILES_BASE: ${FILES_BASE}`);
+  
   try {
     const order = await Order.findById(orderId).populate("user", "name");
     const customerName = order.user?.name?.replace(/\s+/g, "_") || "Customer";
     const shortId = orderId.slice(-6).toUpperCase();
+    
     res.attachment(`Order_${shortId}_${customerName}.zip`);
     const archive = archiver("zip", { zlib: { level: 9 } });
+    
+    archive.on('warning', function(err) {
+      if (err.code === 'ENOENT') {
+        console.warn("[ZIP-WARN]", err);
+      } else {
+        throw err;
+      }
+    });
+
+    archive.on('error', function(err) {
+      console.error("[ZIP-ERR]", err);
+      throw err;
+    });
+
     archive.pipe(res);
+    
+    let fileCount = 0;
     for (const file of order.files) {
-      const originalFileName = path.basename(file.url);
-      const filePath = path.join(FILES_BASE, originalFileName);
-      if (fsSync.existsSync(filePath))
+      // Logic to handle potential full URLs if stored that way
+      const fileName = path.basename(file.url); 
+      const filePath = path.join(FILES_BASE, fileName);
+      
+      const exists = fsSync.existsSync(filePath);
+      console.log(`[ZIP-DEBUG] File: ${fileName} | Path: ${filePath} | Exists: ${exists}`);
+      
+      if (exists) {
         archive.file(filePath, { name: `${shortId}_${file.name}` });
+        fileCount++;
+      } else {
+        console.warn(`[ZIP-MISSING] File not found: ${filePath}`);
+        // Optional: Add a text file saying file is missing
+        archive.append(`File missing on server: ${file.name}`, { name: `${file.name}.txt` });
+      }
     }
+    
+    console.log(`[ZIP-DEBUG] Finalizing archive with ${fileCount} files.`);
     await archive.finalize();
   } catch (error) {
-    res.status(500).json({ message: "Zip failed" });
+    console.error(`[ZIP-FATAL] ${error.message}`);
+    // If headers sent, we can't send JSON error, but stream will fail
+    if (!res.headersSent) res.status(500).json({ message: "Zip failed" });
   }
 };
