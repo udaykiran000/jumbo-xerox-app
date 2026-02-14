@@ -34,6 +34,7 @@ exports.createOrder = async (req, res) => {
     }
 
     // 2. Service Specific Validations (INTEGRITY RESTORED)
+    console.log("[STEP 2] validating service specific details");
     let isMissing = false;
     let missingInfo = {};
 
@@ -71,6 +72,7 @@ exports.createOrder = async (req, res) => {
     }
 
     // 3. Price Calculation Logic (Restored)
+    console.log("[STEP 3] Calculating Price");
     let basePrice = calculateBackendPrice(serviceType, pages, copies, details);
 
     if (basePrice === -1) {
@@ -94,6 +96,11 @@ exports.createOrder = async (req, res) => {
     }
 
     // DB Preparation (Enforced Online Only)
+    console.log("[STEP 4] Preparing DB Object");
+    if (!req.user || !req.user._id) {
+       throw new Error("User not authenticated or req.user missing");
+    }
+
     const baseOrderData = {
       user: req.user._id,
       files,
@@ -109,6 +116,7 @@ exports.createOrder = async (req, res) => {
     };
 
     // 4. Handle Online Payment (Razorpay)
+    console.log("[STEP 5] Preparing Payment");
     const options = {
       amount: Math.round(serverSidePrice * 100), // Convert to Paisa
       currency: "INR",
@@ -116,8 +124,36 @@ exports.createOrder = async (req, res) => {
     };
 
     // Create Razorpay Order
-    const rzpOrder = await razorpayInstance.orders.create(options);
-
+    console.log("[STEP 5.1] Calling Razorpay API");
+    
+    let rzpOrder;
+    try {
+      if (process.env.PAYMENT_TEST_MODE === "true") {
+         console.log("[PAYMENT-TEST] Generatng Mock Razorpay Order...");
+         rzpOrder = {
+            id: `order_test_${Date.now()}`,
+            entity: "order",
+            amount: options.amount,
+            amount_paid: 0,
+            amount_due: options.amount,
+            currency: "INR",
+            receipt: options.receipt,
+            status: "created",
+            attempts: 0,
+            notes: [],
+            created_at: Math.floor(Date.now() / 1000),
+         };
+      } else {
+         rzpOrder = await razorpayInstance.orders.create(options);
+         console.log("Razorpay Response Success");
+      }
+    } catch (rzpError) {
+      console.error("Razorpay API Failed:", rzpError);
+      throw new Error(`Razorpay Creation Failed: ${rzpError.message}`);
+    }
+    
+    console.log("[STEP 6] Saving to DB");
+    
     // Save Order to MongoDB with Razorpay ID
     const newOrder = await Order.create({
       ...baseOrderData,

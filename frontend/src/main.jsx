@@ -6,6 +6,9 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/AuthProvider";
 import { Toaster } from "react-hot-toast";
 
+import { Provider } from "react-redux";
+import { store } from "./redux/store";
+
 // Service Worker Registration
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -19,10 +22,12 @@ if ("serviceWorker" in navigator) {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <Toaster position="top-center" />
-        <App />
-      </AuthProvider>
+      <Provider store={store}>
+        <AuthProvider>
+          <Toaster position="top-center" />
+          <App />
+        </AuthProvider>
+      </Provider>
     </BrowserRouter>
   </React.StrictMode>
 );

@@ -152,23 +152,70 @@ exports.downloadOrderZip = async (req, res) => {
       const filePath = path.join(FILES_BASE, fileName);
       
       const exists = fsSync.existsSync(filePath);
-      console.log(`[ZIP-DEBUG] File: ${fileName} | Path: ${filePath} | Exists: ${exists}`);
+      console.log(`[ZIP-DEBUG] Processing: ${fileName}`);
+      console.log(`[ZIP-DEBUG] Full Path: ${filePath}`);
+      console.log(`[ZIP-DEBUG] Exists on Disk: ${exists}`);
       
       if (exists) {
-        archive.file(filePath, { name: `${shortId}_${file.name}` });
+        archive.file(filePath, { name: file.name || fileName });
         fileCount++;
       } else {
         console.warn(`[ZIP-MISSING] File not found: ${filePath}`);
-        // Optional: Add a text file saying file is missing
-        archive.append(`File missing on server: ${file.name}`, { name: `${file.name}.txt` });
+        archive.append(
+          `Error: The file "${file.name}" was not found on the server.\nIt may have been deleted or the path is incorrect.\nExpected Path: ${filePath}`, 
+          { name: `MISSING_${fileName}.txt` }
+        );
+        fileCount++; // Count error files so zip isn't empty
       }
     }
     
-    console.log(`[ZIP-DEBUG] Finalizing archive with ${fileCount} files.`);
+    if (fileCount === 0) {
+       archive.append("No files attached to this order.", { name: "README.txt" });
+    }
+
+    console.log(`[ZIP-DEBUG] Finalizing archive with ${fileCount} entries.`);
     await archive.finalize();
   } catch (error) {
     console.error(`[ZIP-FATAL] ${error.message}`);
     // If headers sent, we can't send JSON error, but stream will fail
     if (!res.headersSent) res.status(500).json({ message: "Zip failed" });
+  }
+};
+
+// 5. Check File Availability
+exports.checkFileAvailability = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const order = await Order.findById(orderId);
+    if (!order) return res.json({ available: false });
+
+    if (!order.files || order.files.length === 0) {
+      return res.json({ available: false, empty: true });
+    }
+
+    let missingCount = 0;
+    const filesStatus = order.files.map(f => {
+      const fileName = path.basename(f.url);
+      const filePath = path.join(FILES_BASE, fileName);
+      const exists = fsSync.existsSync(filePath);
+      
+      if (!exists) missingCount++;
+      return { name: f.name, exists };
+    });
+
+    const allAvailable = missingCount === 0;
+    const someAvailable = missingCount < order.files.length;
+
+    res.json({ 
+      available: allAvailable, 
+      partial: someAvailable && !allAvailable,
+      missingCount,
+      total: order.files.length,
+      files: filesStatus
+    });
+  } catch (error) {
+    console.error(`[CHECK-ERR] ${error.message}`);
+    res.status(500).json({ message: "Check failed" });
   }
 };

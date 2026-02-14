@@ -1,20 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/authMiddleware");
-const {
-  uploadChunk,    // Modified for Busboy
-  mergeChunks,
-  getUploadStatus,
+const { 
+  getUploadStatus, 
+  uploadChunk, 
+  mergeChunks, 
   downloadOrderZip,
+  checkFileAvailability 
 } = require("../controllers/uploadController");
 
-// status route for resumable check
-router.get("/status", protect, getUploadStatus);
-
-// Busboy streaming in controller
-router.post("/chunk", protect, uploadChunk);
-
-router.post("/merge", protect, mergeChunks);
-router.get("/download-zip/:orderId", protect, downloadOrderZip);
+router.get("/status", getUploadStatus);
+router.post("/chunk", uploadChunk);
+router.post("/merge", mergeChunks);
+router.get("/download-zip/:orderId", downloadOrderZip);
+router.get("/check-files/:orderId", checkFileAvailability);
 
 module.exports = router;

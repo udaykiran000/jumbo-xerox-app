@@ -66,5 +66,9 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 // 8. Server Start
+// 8. Server Start
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`[DEBUG] Server restarted at ${new Date().toISOString()} (Log Check)`);
+});

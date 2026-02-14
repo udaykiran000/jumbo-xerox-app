@@ -261,6 +261,11 @@ export default function UserDashboard() {
                             >
                               <ExternalLink size={18} />
                             </button>
+                             {userData.role === "admin" && order.shipmentId && (
+                                <button className="bg-purple-100 text-purple-600 p-2 rounded-lg text-xs font-bold">
+                                  {order.shipmentId}
+                                </button>
+                             )}
                           </div>
                         </td>
                       </tr>
@@ -430,6 +435,39 @@ export default function UserDashboard() {
                   </p>
                 </div>
               </div>
+
+              {/* Shipping Info Section */}
+              {selectedOrder.shipmentId && (
+                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100 mb-6">
+                  <h4 className="text-[10px] font-black text-purple-400 uppercase mb-4 flex items-center gap-2 tracking-widest italic border-b border-purple-200 pb-2">
+                    <Package size={14} /> Logistics Info
+                  </h4>
+                  <div className="grid grid-cols-2 gap-y-3 text-xs font-bold">
+                    <p className="text-slate-500 uppercase">
+                      Courier:{" "}
+                      <span className="text-slate-800">
+                        {selectedOrder.courierName || "Standard"}
+                      </span>
+                    </p>
+                    <p className="text-slate-500 uppercase">
+                      AWB:{" "}
+                      <span className="text-slate-800">
+                        {selectedOrder.awbNumber || selectedOrder.shipmentId}
+                      </span>
+                    </p>
+                    <div className="col-span-2 mt-2">
+                      <a
+                        href={`https://shiprocket.co/tracking/${selectedOrder.awbNumber}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-purple-600 text-white rounded-xl uppercase text-[10px] tracking-widest hover:bg-purple-700 transition"
+                      >
+                        Track Shipment <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Files Section with Expiry Sync */}
               {selectedOrder.files && selectedOrder.files.length > 0 && (

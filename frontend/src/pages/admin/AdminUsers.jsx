@@ -82,17 +82,17 @@ export default function AdminUsers() {
             <Users size={28} />
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-              Users
-            </p>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
               Directory
+            </p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+              Customers
             </h1>
           </div>
         </div>
 
         {/* ADD USER CARD (Single col on mobile) */}
-        <div className="w-full lg:w-auto bg-white p-5 md:p-6 rounded-[2rem] border border-gray-200 shadow-sm flex-1 max-w-2xl">
+        <div className="w-full lg:w-auto bg-white p-5 md:p-6 rounded-3xl border border-gray-200 shadow-sm flex-1 max-w-2xl">
           <form
             onSubmit={handleAddUser}
             className="grid grid-cols-1 md:grid-cols-4 gap-3"
@@ -101,7 +101,7 @@ export default function AdminUsers() {
               required
               type="text"
               placeholder="Name"
-              className="bg-gray-50 border-gray-200 rounded-xl p-3 text-xs font-bold w-full"
+              className="bg-gray-50 border-gray-200 rounded-lg p-3 text-sm font-medium w-full focus:ring-2 focus:ring-blue-500 outline-none"
               value={newUser.name}
               onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
             />
@@ -109,7 +109,7 @@ export default function AdminUsers() {
               required
               type="email"
               placeholder="Email"
-              className="bg-gray-50 border-gray-200 rounded-xl p-3 text-xs font-bold w-full"
+              className="bg-gray-50 border-gray-200 rounded-lg p-3 text-sm font-medium w-full focus:ring-2 focus:ring-blue-500 outline-none"
               value={newUser.email}
               onChange={(e) =>
                 setNewUser({ ...newUser, email: e.target.value })
@@ -118,8 +118,8 @@ export default function AdminUsers() {
             <input
               required
               type="password"
-              placeholder="Pass"
-              className="bg-gray-50 border-gray-200 rounded-xl p-3 text-xs font-bold w-full"
+              placeholder="Password"
+              className="bg-gray-50 border-gray-200 rounded-lg p-3 text-sm font-medium w-full focus:ring-2 focus:ring-blue-500 outline-none"
               value={newUser.password}
               onChange={(e) =>
                 setNewUser({ ...newUser, password: e.target.value })
@@ -128,12 +128,12 @@ export default function AdminUsers() {
             <button
               disabled={isSubmitting}
               type="submit"
-              className="bg-blue-600 text-white rounded-xl text-[10px] font-black py-3 px-4 flex items-center justify-center gap-2"
+              className="bg-blue-600 text-white rounded-lg text-xs font-bold py-3 px-6 flex items-center justify-center gap-2 hover:bg-blue-700 shadow-sm transition-all"
             >
               {isSubmitting ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
-                "ADD USER"
+                "Add Customer"
               )}
             </button>
           </form>
@@ -148,22 +148,22 @@ export default function AdminUsers() {
         />
         <input
           type="text"
-          placeholder="Search customers..."
-          className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Search customers..."
+              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
       {/* SCROLLABLE USER TABLE */}
-      <div className="bg-white border border-gray-200 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left min-w-[700px]">
             <thead>
-              <tr className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest">
-                <th className="p-5">User Info</th>
-                <th className="p-5">Status</th>
-                <th className="p-5 text-center">Actions</th>
+              <tr className="bg-slate-50 border-b border-gray-100 text-xs font-semibold uppercase text-slate-500 tracking-wide">
+                <th className="p-6">User Info</th>
+                <th className="p-6">Status</th>
+                <th className="p-6 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

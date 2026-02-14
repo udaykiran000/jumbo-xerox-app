@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
+import api from "../../services/api"; // Static Import
 import Breadcrumbs from "../common/Breadcrumbs";
 import {
   LayoutDashboard,
@@ -21,11 +22,17 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { useDispatch, useSelector } from "react-redux";
+import { fetchDashboardStats, selectNotifications } from "../../redux/slices/dashboardSlice";
+
 const AdminLayout = () => {
   const { user, logout } = useContext(AuthContext);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  
+  const dispatch = useDispatch();
+  const notifications = useSelector(selectNotifications);
 
   // Debugging route logs
   useEffect(() => {
@@ -34,16 +41,16 @@ const AdminLayout = () => {
 
   // Business Context Menu Items
   const menuItems = [
-    { name: "Overview", path: "/admin", icon: <LayoutDashboard size={18} /> },
+    { name: "Dashboard", path: "/admin", icon: <LayoutDashboard size={18} /> },
     { name: "Orders", path: "/admin/orders", icon: <ShoppingCart size={18} /> },
     { name: "Shipments", path: "/admin/shipments", icon: <Truck size={18} /> },
     {
-      name: "Storage Cleanup",
+      name: "Delete Files", // Fixed capitalization
       path: "/admin/delete-files",
       icon: <Trash2 size={18} />,
     },
     {
-      name: "Customer Directory",
+      name: "Customers",
       path: "/admin/users",
       icon: <Users size={18} />,
     },
@@ -68,6 +75,23 @@ const AdminLayout = () => {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Redux: Fetch on Mount & Poll
+  useEffect(() => {
+    dispatch(fetchDashboardStats());
+    const interval = setInterval(() => dispatch(fetchDashboardStats()), 30000);
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
+  const getBadge = (path) => {
+    if (!notifications) return null;
+    
+    if (path === "/admin/orders" && notifications.pendingOrders > 0) return notifications.pendingOrders;
+    if (path === "/admin/shipments" && notifications.pendingShipments > 0) return notifications.pendingShipments;
+    if (path === "/admin/contact-messages" && notifications.unreadMessages > 0) return notifications.unreadMessages;
+    if (path === "/admin/delete-files" && notifications.fileCleanup > 0) return notifications.fileCleanup;
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-[#fcfcfd] flex flex-col font-sans text-slate-800">
@@ -100,17 +124,23 @@ const AdminLayout = () => {
           <nav className="hidden xl:flex items-center gap-1">
             {menuItems.map((item) => {
               const isActive = location.pathname === item.path;
+              const badge = getBadge(item.path);
               return (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`px-3 py-2 rounded-md text-[13px] font-semibold transition-colors ${
+                  className={`relative px-3 py-2 rounded-md text-[13px] font-semibold transition-colors flex items-center gap-2 ${
                     isActive
                       ? "text-blue-600 bg-blue-50/50"
                       : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                   }`}
                 >
                   {item.name}
+                  {badge && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+                      {badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -166,6 +196,11 @@ const AdminLayout = () => {
                     }`}
                   >
                     {item.icon} {item.name}
+                    {getBadge(item.path) && (
+                      <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        {getBadge(item.path)}
+                      </span>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -207,7 +242,7 @@ const AdminLayout = () => {
             <ul className="space-y-2 text-sm font-semibold text-slate-600">
               <li>
                 <Link to="/admin" className="hover:text-blue-600">
-                  Overview
+                  Dashboard
                 </Link>
               </li>
               <li>

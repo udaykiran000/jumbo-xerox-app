@@ -17,26 +17,98 @@ import {
   X,
   RefreshCw,
 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { fetchDashboardStats } from "../../redux/slices/dashboardSlice";
 
-export default function AdminShipments() {
+const AdminShipments = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedShipment, setSelectedShipment] = useState(null);
+  const [trackingData, setTrackingData] = useState(null);
+  // Removed unused state vars: isDrawerOpen, searchTerm, shippingLoading (local var is enough or unused)
+  const [shippingLoading, setShippingLoading] = useState(false);
+
+  const dispatch = useDispatch();
+
+  // Fetch Tracking Data when shipment is selected
+  useEffect(() => {
+    if (selectedShipment && selectedShipment.shipmentId) {
+      const fetchTracking = async () => {
+        try {
+          const res = await api.get(
+            `/admin/shipment/track/${selectedShipment._id}`
+          );
+          setTrackingData(res.data.tracking_data);
+        } catch (e) {
+          console.error("Tracking Error:", e);
+        }
+      };
+      fetchTracking();
+    } else {
+      setTrackingData(null);
+    }
+  }, [selectedShipment]);
 
   useEffect(() => {
-    fetchShipmentOrders();
+    fetchOrders();
   }, []);
 
-  const fetchShipmentOrders = async () => {
-    console.log("[DEBUG-SHIP] Fetching shipment ready orders...");
+  const fetchOrders = async () => {
     try {
       const { data } = await api.get("/admin/orders");
-      // Filter orders that are either Paid or marked for Delivery
-      setOrders(data.orders.filter((o) => o.deliveryMode === "Delivery"));
-    } catch (e) {
-      toast.error("Shipment data load failed");
-    } finally {
+      // Filter for ALL PAID Delivery orders (to show pipeline)
+      const shipmentReady = data.orders.filter(
+        (o) =>
+          o.paymentStatus === "Paid" &&
+          o.deliveryMode === "Delivery",
+      );
+      setOrders(shipmentReady);
       setLoading(false);
+    } catch (error) {
+      toast.error("Failed to fetch shipments");
+      setLoading(false);
+    }
+  };
+
+  const handleCreateShipment = async () => {
+    if (!selectedShipment) return;
+    
+    if (selectedShipment.shipmentId) {
+      toast.error("Shipment already created");
+      return;
+    }
+    setShippingLoading(true);
+    try {
+      console.log("Sending Create Request...");
+      const { data } = await api.post("/admin/shipment/create", {
+        orderId: selectedShipment._id,
+      });
+      toast.success(data.message);
+      
+      // Update Local State for Immediate UI Feedback
+      const updatedShipment = {
+           ...selectedShipment,
+           shipmentId: data.order.shipmentId,
+           awbNumber: data.order.awbNumber
+      };
+      
+      setSelectedShipment(updatedShipment);
+      
+      // Update Main List
+       setOrders((prev) =>
+        prev.map((o) =>
+          o._id === selectedShipment._id ? updatedShipment : o
+        )
+      );
+      
+      // Global Update: Refresh Badges Instantly
+      dispatch(fetchDashboardStats());
+      
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Creation Failed");
+    } finally {
+      setShippingLoading(false);
     }
   };
 
@@ -75,7 +147,9 @@ export default function AdminShipments() {
               <p className="text-[9px] font-black uppercase text-slate-400">
                 Shipped
               </p>
-              <h3 className="text-xl font-black">0</h3>
+              <h3 className="text-xl font-black">
+                {orders.filter(o => o.shipmentId).length}
+              </h3>
             </div>
             <div className="p-2 bg-emerald-50 text-emerald-500 rounded-xl">
               <CheckCircle2 size={18} />
@@ -86,7 +160,9 @@ export default function AdminShipments() {
               <p className="text-[9px] font-black uppercase text-slate-400">
                 Pending Shipment
               </p>
-              <h3 className="text-xl font-black">{orders.length}</h3>
+              <h3 className="text-xl font-black">
+                 {orders.filter(o => !o.shipmentId).length}
+              </h3>
             </div>
             <div className="p-2 bg-orange-50 text-orange-500 rounded-xl">
               <Clock size={18} />
@@ -151,18 +227,28 @@ export default function AdminShipments() {
                       </span>
                     </td>
                     <td className="p-6 text-[10px] font-mono text-slate-400 italic">
-                      Not Created
+                      {o.shipmentId ? o.shipmentId.slice(-8) : "Not Created"}
                     </td>
                     <td className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      Not Shipped
+                      {o.shipmentId ? "Shipped" : "Not Shipped"}
                     </td>
                     <td className="p-6 text-center">
-                      <button
-                        onClick={() => setSelectedShipment(o)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-700 flex items-center gap-2 mx-auto"
-                      >
-                        + Create Shipment
-                      </button>
+                      {o.status === "Completed" && !o.shipmentId && (
+                        <button
+                          onClick={() => setSelectedShipment(o)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-700 flex items-center gap-2 mx-auto"
+                        >
+                          + Create Shipment
+                        </button>
+                      )}
+                      {o.status === "Completed" && o.shipmentId && (
+                        <button
+                          onClick={() => setSelectedShipment(o)}
+                          className="bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-purple-700 flex items-center gap-2 mx-auto"
+                        >
+                          <Eye size={14} /> View Tracking
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -212,7 +298,8 @@ export default function AdminShipments() {
                 </div>
 
                 <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                  {/* ... Existing Tracking Content ... */}
+                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-white rounded-full text-blue-600 border border-blue-200">
                       <CheckCircle2 size={24} />
                     </div>
@@ -221,17 +308,18 @@ export default function AdminShipments() {
                         Current Status
                       </p>
                       <h3 className="text-xl font-black text-slate-800">
-                        Pending
+                        {trackingData?.current_status || "Pending"}
                       </h3>
                     </div>
                   </div>
                   <span className="px-4 py-1.5 bg-orange-100 text-orange-600 rounded-full text-[10px] font-black uppercase">
-                    Pending
+                    {trackingData?.current_status || "Pending"}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-[#2563eb] p-8 rounded-[2rem] text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden">
+                  {/* ... Shipment Info ... */}
+                   <div className="bg-[#2563eb] p-8 rounded-[2rem] text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden">
                     <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
                       <FileText size={16} /> Shipment Information
                     </h4>
@@ -257,7 +345,7 @@ export default function AdminShipments() {
                           AWB Number
                         </p>
                         <p className="text-xs font-black italic opacity-80">
-                          Pending Assignment
+                          {selectedShipment.shipmentId || "Pending Assignment"}
                         </p>
                       </div>
                       <div>
@@ -305,12 +393,9 @@ export default function AdminShipments() {
                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-100 p-10 rounded-[2.5rem] flex flex-col items-center justify-center text-center space-y-4 border-dashed">
-                  <div className="p-4 bg-orange-50 text-orange-500 rounded-full">
-                    <Clock size={32} />
-                  </div>
+                <div className="bg-white border border-gray-100 p-10 rounded-[2.5rem] flex flex-col text-center space-y-4 border-dashed">
                   <h4 className="text-lg font-black text-slate-800">
-                    Tracking Data Pending
+                    Tracking Timeline
                   </h4>
                   <p className="text-xs font-bold text-slate-400 max-w-sm">
                     Tracking information will be available once the shipment is
@@ -320,12 +405,41 @@ export default function AdminShipments() {
               </div>
 
               <div className="p-8 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                <button className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-100">
-                  View Order Details
-                </button>
-                <button className="bg-purple-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-purple-100">
-                  Download Label
-                </button>
+                {!selectedShipment.shipmentId && (
+                  <button
+                    onClick={handleCreateShipment}
+                    disabled={shippingLoading}
+                    className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2 flex"
+                  >
+                    {shippingLoading ? (
+                       <>
+                         <Loader2 size={16} className="animate-spin" /> Creating...
+                       </>
+                    ) : "Generate Shipment ID"}
+                  </button>
+                )}
+                
+                {selectedShipment.shipmentId && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { data } = await api.get(
+                          `/admin/shipment/label/${selectedShipment._id}`
+                        );
+                        if (data.labelUrl) {
+                          window.open(data.labelUrl, "_blank");
+                        } else {
+                          toast.error("Label not generated yet");
+                        }
+                      } catch (e) {
+                        toast.error("Failed to fetch label");
+                      }
+                    }}
+                    className="bg-purple-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-purple-100 hover:bg-purple-700 transition-colors"
+                  >
+                    Download Label
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -333,4 +447,6 @@ export default function AdminShipments() {
       </AnimatePresence>
     </div>
   );
-}
+};
+
+export default AdminShipments;
