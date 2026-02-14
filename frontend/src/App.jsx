@@ -34,11 +34,22 @@ import AdminShipments from "./pages/admin/AdminShipments"; // Updated from Admin
 import AdminDeleteFiles from "./pages/admin/AdminDeleteFiles"; // NEW
 import AdminContactMessages from "./pages/admin/AdminContactMessages"; // NEW
 
-import { ConfigProvider } from "./context/ConfigContext";
+// import { ConfigProvider } from "./context/ConfigContext"; // Removed
+
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { checkAuth } from "./redux/slices/authSlice";
+import { fetchConfig } from "./redux/slices/configSlice";
 
 function App() {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(checkAuth());
+    dispatch(fetchConfig());
+  }, [dispatch]);
+
   return (
-    <ConfigProvider>
       <Routes>
       {/* 1. Public Routes */}
       <Route element={<MainLayout />}>
@@ -89,7 +100,6 @@ function App() {
         }
       />
       </Routes>
-    </ConfigProvider>
   );
 }
 

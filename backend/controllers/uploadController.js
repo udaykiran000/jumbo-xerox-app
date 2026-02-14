@@ -80,6 +80,7 @@ exports.uploadChunk = async (req, res) => {
   busboy.on("finish", async () => {
     try {
       if (savePromise) await savePromise;
+      console.log(`[UPLOAD-SERVER] Chunk ${chunkIndex} saved for ${uploadId}`);
       res.json({ success: true });
     } catch (e) {
       res.status(500).json({ success: false });
@@ -115,23 +116,106 @@ exports.mergeChunks = async (req, res) => {
 };
 
 // 4. Download Zip (Kept as original)
+// 4. Download Zip (Debugged for Render)
 exports.downloadOrderZip = async (req, res) => {
   const { orderId } = req.params;
+  console.log(`[ZIP-DEBUG] Request for Order: ${orderId}`);
+  console.log(`[ZIP-DEBUG] FILES_BASE: ${FILES_BASE}`);
+  
   try {
     const order = await Order.findById(orderId).populate("user", "name");
     const customerName = order.user?.name?.replace(/\s+/g, "_") || "Customer";
     const shortId = orderId.slice(-6).toUpperCase();
+    
     res.attachment(`Order_${shortId}_${customerName}.zip`);
     const archive = archiver("zip", { zlib: { level: 9 } });
+    
+    archive.on('warning', function(err) {
+      if (err.code === 'ENOENT') {
+        console.warn("[ZIP-WARN]", err);
+      } else {
+        throw err;
+      }
+    });
+
+    archive.on('error', function(err) {
+      console.error("[ZIP-ERR]", err);
+      throw err;
+    });
+
     archive.pipe(res);
+    
+    let fileCount = 0;
     for (const file of order.files) {
-      const originalFileName = path.basename(file.url);
-      const filePath = path.join(FILES_BASE, originalFileName);
-      if (fsSync.existsSync(filePath))
-        archive.file(filePath, { name: `${shortId}_${file.name}` });
+      // Logic to handle potential full URLs if stored that way
+      const fileName = path.basename(file.url); 
+      const filePath = path.join(FILES_BASE, fileName);
+      
+      const exists = fsSync.existsSync(filePath);
+      console.log(`[ZIP-DEBUG] Processing: ${fileName}`);
+      console.log(`[ZIP-DEBUG] Full Path: ${filePath}`);
+      console.log(`[ZIP-DEBUG] Exists on Disk: ${exists}`);
+      
+      if (exists) {
+        archive.file(filePath, { name: file.name || fileName });
+        fileCount++;
+      } else {
+        console.warn(`[ZIP-MISSING] File not found: ${filePath}`);
+        archive.append(
+          `Error: The file "${file.name}" was not found on the server.\nIt may have been deleted or the path is incorrect.\nExpected Path: ${filePath}`, 
+          { name: `MISSING_${fileName}.txt` }
+        );
+        fileCount++; // Count error files so zip isn't empty
+      }
     }
+    
+    if (fileCount === 0) {
+       archive.append("No files attached to this order.", { name: "README.txt" });
+    }
+
+    console.log(`[ZIP-DEBUG] Finalizing archive with ${fileCount} entries.`);
     await archive.finalize();
   } catch (error) {
-    res.status(500).json({ message: "Zip failed" });
+    console.error(`[ZIP-FATAL] ${error.message}`);
+    // If headers sent, we can't send JSON error, but stream will fail
+    if (!res.headersSent) res.status(500).json({ message: "Zip failed" });
+  }
+};
+
+// 5. Check File Availability
+exports.checkFileAvailability = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const order = await Order.findById(orderId);
+    if (!order) return res.json({ available: false });
+
+    if (!order.files || order.files.length === 0) {
+      return res.json({ available: false, empty: true });
+    }
+
+    let missingCount = 0;
+    const filesStatus = order.files.map(f => {
+      const fileName = path.basename(f.url);
+      const filePath = path.join(FILES_BASE, fileName);
+      const exists = fsSync.existsSync(filePath);
+      
+      if (!exists) missingCount++;
+      return { name: f.name, exists };
+    });
+
+    const allAvailable = missingCount === 0;
+    const someAvailable = missingCount < order.files.length;
+
+    res.json({ 
+      available: allAvailable, 
+      partial: someAvailable && !allAvailable,
+      missingCount,
+      total: order.files.length,
+      files: filesStatus
+    });
+  } catch (error) {
+    console.error(`[CHECK-ERR] ${error.message}`);
+    res.status(500).json({ message: "Check failed" });
   }
 };

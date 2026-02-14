@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   RotateCcw,
@@ -20,7 +20,7 @@ import {
 import { FiMapPin, FiPhone, FiMail, FiZap } from "react-icons/fi";
 import api from "../../services/api";
 import toast from "react-hot-toast";
-import { AuthContext } from "../../context/AuthContext";
+// import { AuthContext } from "../../context/AuthContext"; // Removed
 import { displayRazorpay } from "../../services/paymentService";
 
 // --- Service Cards Images ---
@@ -28,9 +28,14 @@ import a4Img from "../../assets/a4.jpg";
 import planImg from "../../assets/Plan-Printing.jpg";
 import bcardImg from "../../assets/bcard.jpg";
 
+import { useSelector } from "react-redux";
+import { selectUser } from "../../redux/slices/authSlice";
+import { selectConfig } from "../../redux/slices/configSlice";
+import { Store, CheckCircle2 } from "lucide-react";
+
 export default function UserDashboard() {
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const user = useSelector(selectUser);
 
   // States
   const [userData, setUserData] = useState({ name: "User", email: "" });
@@ -71,19 +76,59 @@ export default function UserDashboard() {
   }, []);
 
   // --- LOGICAL CONNECTIVITY: RESUME PAYMENT ---
+  // --- LOGICAL CONNECTIVITY: RESUME PAYMENT ---
+  // Mock Payment States
+  const [showMockPayment, setShowMockPayment] = useState(false);
+  const [mockOrderData, setMockOrderData] = useState(null);
+  const config = useSelector(selectConfig);
+
   const handlePayNow = async (orderId) => {
     setIsResuming(true);
     try {
       // Calls backend to generate fresh Razorpay Order ID
       const { data } = await api.post(`/orders/resume-payment/${orderId}`);
-      // Triggers Razorpay SDK
-      await displayRazorpay(data, user, navigate);
+      
+      // Check for Test Mode
+      if (config.paymentTestMode) {
+        setMockOrderData(data); // data contains { order, razorpayOrder }
+        setShowMockPayment(true);
+      } else {
+        // Triggers Razorpay SDK
+        await displayRazorpay(data, user, navigate);
+      }
     } catch (err) {
       const msg =
         err.response?.data?.message || "Payment initialization failed";
       toast.error(msg);
     } finally {
       setIsResuming(false);
+    }
+  };
+
+  const handleMockPaymentAction = async (success) => {
+    setShowMockPayment(false);
+    if (!mockOrderData) return;
+
+    if (success) {
+      try {
+        const loadingToast = toast.loading("Verifying Payment...");
+        await api.post("/payments/verify", {
+          razorpay_order_id: mockOrderData.razorpayOrder.id,
+          razorpay_payment_id: "mock_payment_id_" + Date.now(),
+          razorpay_signature: "mock_payment_signature",
+          dbOrderId: mockOrderData.order._id,
+        });
+        toast.dismiss(loadingToast);
+        toast.success("Payment Successful!");
+        
+        // Refresh orders to show updated status
+        const ordersRes = await api.get("/orders/my-orders");
+        setOrders(ordersRes.data || []);
+      } catch (e) {
+        toast.error("Mock Verification Failed");
+      }
+    } else {
+      toast.error("Payment Cancelled");
     }
   };
 
@@ -261,6 +306,11 @@ export default function UserDashboard() {
                             >
                               <ExternalLink size={18} />
                             </button>
+                             {userData.role === "admin" && order.shipmentId && (
+                                <button className="bg-purple-100 text-purple-600 p-2 rounded-lg text-xs font-bold">
+                                  {order.shipmentId}
+                                </button>
+                             )}
                           </div>
                         </td>
                       </tr>
@@ -431,6 +481,39 @@ export default function UserDashboard() {
                 </div>
               </div>
 
+              {/* Shipping Info Section */}
+              {selectedOrder.shipmentId && (
+                <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100 mb-6">
+                  <h4 className="text-[10px] font-black text-purple-400 uppercase mb-4 flex items-center gap-2 tracking-widest italic border-b border-purple-200 pb-2">
+                    <Package size={14} /> Logistics Info
+                  </h4>
+                  <div className="grid grid-cols-2 gap-y-3 text-xs font-bold">
+                    <p className="text-slate-500 uppercase">
+                      Courier:{" "}
+                      <span className="text-slate-800">
+                        {selectedOrder.courierName || "Standard"}
+                      </span>
+                    </p>
+                    <p className="text-slate-500 uppercase">
+                      AWB:{" "}
+                      <span className="text-slate-800">
+                        {selectedOrder.awbNumber || selectedOrder.shipmentId}
+                      </span>
+                    </p>
+                    <div className="col-span-2 mt-2">
+                      <a
+                        href={`https://shiprocket.co/tracking/${selectedOrder.awbNumber}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-purple-600 text-white rounded-xl uppercase text-[10px] tracking-widest hover:bg-purple-700 transition"
+                      >
+                        Track Shipment <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Files Section with Expiry Sync */}
               {selectedOrder.files && selectedOrder.files.length > 0 && (
                 <div>
@@ -468,6 +551,72 @@ export default function UserDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --- MOCK PAYMENT MODAL --- */}
+      {showMockPayment && (
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-[400px] overflow-hidden rounded-2xl shadow-2xl relative flex flex-col animate-in fade-in zoom-in duration-300">
+            {/* Header */}
+            <div className="bg-[#2b84ea] p-6 text-white flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-lg">Jumbo Xerox</h3>
+                <p className="text-xs opacity-90">Test Mode Payment</p>
+              </div>
+              <div className="bg-white/20 p-2 rounded-lg">
+                <Store size={20} />
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-8 space-y-6">
+              <div className="text-center">
+                <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">
+                  Payable Amount
+                </p>
+                <h2 className="text-4xl font-black text-gray-900">
+                  ₹{mockOrderData?.order?.totalAmount || mockOrderData?.amount || "0.00"}
+                </h2>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
+                <div className="bg-blue-500 text-white p-1 rounded-full mt-0.5">
+                  <CheckCircle2 size={12} />
+                </div>
+                <div>
+                  <h5 className="font-bold text-sm text-blue-900">
+                    Development Mode
+                  </h5>
+                  <p className="text-xs text-blue-700 leading-relaxed mt-1">
+                    This is a simulated transaction. No actual money will be
+                    deducted.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-4">
+                <button
+                  onClick={() => handleMockPaymentAction(true)}
+                  className="w-full py-4 bg-[#2b84ea] hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex justify-center items-center gap-2"
+                >
+                  Success <ChevronRight size={16} />
+                </button>
+                <button
+                  onClick={() => handleMockPaymentAction(false)}
+                  className="w-full py-4 bg-white border-2 border-gray-100 hover:bg-gray-50 text-gray-600 font-bold rounded-xl transition-all active:scale-95"
+                >
+                  Cancel Transaction
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 p-3 text-center border-t border-gray-100">
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center justify-center gap-1">
+                <CreditCard size={12} /> 100% Secure (Mock)
+              </p>
             </div>
           </div>
         </div>

@@ -19,18 +19,22 @@ import {
   CreditCard,
   Hash,
 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { fetchDashboardStats } from "../../redux/slices/dashboardSlice";
 
-export default function AdminOrders() {
+const AdminOrders = () => {
   const { state } = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [fileStatus, setFileStatus] = useState(null); // File Check State
 
-  const [countingId, setCountingId] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [pendingStatus, setPendingStatus] = useState("");
-  const timerRef = useRef(null);
+  const [timers, setTimers] = useState({}); // { [id]: seconds }
+  const [pendingStatuses, setPendingStatuses] = useState({}); // { [id]: status }
+  const timeouts = useRef({}); // { [id]: timeoutID }
+
+  const dispatch = useDispatch();
 
   // Safe API URL Logic (Original Integrity Preserved)
   const rawUrl =
@@ -39,6 +43,10 @@ export default function AdminOrders() {
 
   useEffect(() => {
     fetchOrders();
+    // Cleanup on unmount
+    return () => {
+      Object.values(timeouts.current).forEach((id) => clearTimeout(id));
+    };
   }, []);
 
   // Dashboard Auto-open Logic (Original Integrity Preserved)
@@ -49,15 +57,41 @@ export default function AdminOrders() {
     }
   }, [orders, state]);
 
-  // 7-SECOND UNDO TIMER (Original Integrity Preserved)
+  // Fetch File Status when Order Selected
   useEffect(() => {
-    if (timeLeft > 0) {
-      timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-    } else if (timeLeft === 0 && countingId) {
-      commitStatus(countingId, pendingStatus);
+    if (selectedOrder && !selectedOrder.filesDeleted) {
+      const checkFiles = async () => {
+        try {
+          const { data } = await api.get(`/upload/check-files/${selectedOrder._id}`);
+          setFileStatus(data);
+        } catch (e) {
+          console.error("File check failed", e);
+          setFileStatus(null);
+        }
+      };
+      checkFiles();
+    } else {
+      setFileStatus(null);
     }
-    return () => clearTimeout(timerRef.current);
-  }, [timeLeft, countingId]);
+  }, [selectedOrder]);
+
+  // Global Tick for Visual Timers
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimers((prev) => {
+        const next = { ...prev };
+        let hasChanges = false;
+        Object.keys(next).forEach((id) => {
+          if (next[id] > 0) {
+            next[id] -= 1;
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchOrders = async () => {
     try {
@@ -74,25 +108,60 @@ export default function AdminOrders() {
   const handleStatusChange = (id, status) => {
     const order = orders.find((o) => o._id === id);
     if (!order || order.status === status) return;
+
     if (status === "Completed" || status === "Cancelled") {
-      setCountingId(id);
-      setPendingStatus(status);
-      setTimeLeft(7);
+      // Start Timer Logic
+      setTimers((prev) => ({ ...prev, [id]: 7 }));
+      setPendingStatuses((prev) => ({ ...prev, [id]: status }));
       toast(`Action locking in 7s...`, { icon: "⏳" });
+
+      // Clear existing if any
+      if (timeouts.current[id]) clearTimeout(timeouts.current[id]);
+
+      // Schedule Commit
+      timeouts.current[id] = setTimeout(() => {
+        commitStatus(id, status);
+      }, 7000);
     } else {
+      // Immediate Change for normal statuses
       commitStatus(id, status);
     }
   };
 
+  const cancelTimer = (id) => {
+    if (timeouts.current[id]) {
+      clearTimeout(timeouts.current[id]);
+      delete timeouts.current[id];
+    }
+    setTimers((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setPendingStatuses((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    toast.success("Action Cancelled", { icon: "🔄" });
+  };
+
   const commitStatus = async (id, status) => {
     try {
+      // Clear local timer state visual immediately
+      setTimers((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      delete timeouts.current[id];
+
       await api.put(`/admin/order/${id}`, { status });
       toast.success(`Order locked as ${status}`);
-      setCountingId(null);
       fetchOrders();
+      dispatch(fetchDashboardStats()); // Update badges immediately
     } catch (e) {
       toast.error(e.response?.data?.message || "Lock active");
-      setCountingId(null);
     }
   };
 
@@ -127,8 +196,8 @@ export default function AdminOrders() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 font-sans pb-20">
       <div className="flex justify-between items-center px-4">
-        <h1 className="text-3xl font-black text-slate-900 italic tracking-tighter uppercase">
-          Order Repository
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+          Orders
         </h1>
         <div className="relative w-96">
           <Search
@@ -137,24 +206,24 @@ export default function AdminOrders() {
           />
           <input
             type="text"
-            placeholder="Search Identity, Name or Phone..."
-            className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl text-[11px] font-black focus:ring-2 focus:ring-blue-600 shadow-sm outline-none"
+            placeholder="Search orders..."
+            className="w-full pl-12 pr-6 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-600 shadow-sm outline-none"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[1100px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-gray-100 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                <th className="p-7">ID</th>
-                <th className="p-7">Customer</th>
-                <th className="p-7 text-center">Amount</th>
-                <th className="p-7 text-center">Status</th>
-                <th className="p-7 text-center">Control</th>
+              <tr className="bg-slate-50 border-b border-gray-100 text-xs font-semibold uppercase text-slate-500 tracking-wide">
+                <th className="p-6">ID</th>
+                <th className="p-6">Customer</th>
+                <th className="p-6 text-center">Amount</th>
+                <th className="p-6 text-center">Status</th>
+                <th className="p-6 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -173,14 +242,14 @@ export default function AdminOrders() {
                     key={o._id}
                     className="hover:bg-blue-50/20 transition-all"
                   >
-                    <td className="p-7 text-blue-600 font-black italic">
+                    <td className="p-6 text-blue-600 font-medium text-sm">
                       #{o._id.slice(-6).toUpperCase()}
                     </td>
-                    <td className="p-7">
-                      <p className="text-slate-900 font-black text-sm">
+                    <td className="p-6">
+                      <p className="text-slate-900 font-medium text-sm">
                         {o.user?.name || "N/A"}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">
+                      <p className="text-xs text-slate-500">
                         {o.user?.phone || "No Phone"}
                       </p>
                     </td>
@@ -202,12 +271,12 @@ export default function AdminOrders() {
                     </td>
                     <td className="p-7">
                       <div className="flex items-center justify-center gap-3">
-                        {countingId === o._id ? (
+                        {timers[o._id] !== undefined ? (
                           <button
-                            onClick={() => setCountingId(null)}
-                            className="bg-red-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black animate-pulse flex items-center gap-2"
+                            onClick={() => cancelTimer(o._id)}
+                            className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-medium flex items-center gap-2 animate-pulse"
                           >
-                            <RotateCcw size={14} /> UNDO ({timeLeft}s)
+                            <RotateCcw size={14} /> UNDO ({timers[o._id]}s)
                           </button>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -217,7 +286,12 @@ export default function AdminOrders() {
                                 onChange={(e) =>
                                   handleStatusChange(o._id, e.target.value)
                                 }
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[10px] font-black outline-none cursor-pointer"
+                                disabled={o.filesDeleted}
+                                className={`bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium outline-none cursor-pointer focus:ring-2 focus:ring-blue-100 ${
+                                  o.filesDeleted
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                                }`}
                               >
                                 <option value="Pending">Pending</option>
                                 <option value="Processing">Processing</option>
@@ -242,10 +316,10 @@ export default function AdminOrders() {
                                     "Opening Shipment Assignment...",
                                   )
                                 }
-                                className="p-3 bg-emerald-600 text-white rounded-xl hover:scale-110 shadow-xl flex items-center gap-1"
+                                className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-1 shadow-sm"
                               >
-                                <Truck size={18} />{" "}
-                                <span className="text-[9px] font-black">
+                                <Truck size={16} />
+                                <span className="text-xs font-medium">
                                   SHIP
                                 </span>
                               </button>
@@ -268,7 +342,7 @@ export default function AdminOrders() {
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white w-full max-w-5xl rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col h-[85vh]"
+              className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[85vh]"
             >
               <div className="p-8 bg-slate-950 text-white flex justify-between items-center">
                 <div>
@@ -330,7 +404,7 @@ export default function AdminOrders() {
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100">
+                <div className="bg-slate-50 p-8 rounded-3xl border border-slate-100">
                   <h4 className="text-[11px] font-black uppercase text-slate-400 mb-6 border-b pb-3 flex items-center gap-2">
                     <FileText size={16} /> Specs Matrix
                   </h4>
@@ -395,12 +469,19 @@ export default function AdminOrders() {
                       <Hash size={16} /> Source Documentation
                     </h4>
                     {!selectedOrder.filesDeleted && (
-                      <button
-                        onClick={() => handleZipDownload(selectedOrder._id)}
-                        className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-xl shadow-blue-200"
-                      >
-                        <Download size={14} /> Download All (ZIP)
-                      </button>
+                      fileStatus?.available ? (
+                        <button
+                          onClick={() => handleZipDownload(selectedOrder._id)}
+                          className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-xl shadow-blue-200"
+                        >
+                          <Download size={14} /> Download All (ZIP)
+                        </button>
+                      ) : (
+                        <div className="px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase flex items-center gap-2">
+                           <AlertTriangle size={14} /> 
+                           {fileStatus ? "Some Files Missing" : "Checking Files..."}
+                        </div>
+                      )
                     )}
                   </div>
                   <div className="grid gap-4">
@@ -413,24 +494,41 @@ export default function AdminOrders() {
                         </p>
                       </div>
                     ) : (
-                      (selectedOrder.files || []).map((f, i) => (
+                      (selectedOrder.files || []).map((f, i) => {
+                        const isLoading = !fileStatus;
+                        // Check specific file status
+                        const fileMeta = fileStatus?.files?.find(fs => fs.name === f.name);
+                        const isMissing = fileMeta && !fileMeta.exists;
+
+                        return (
                         <div
                           key={i}
-                          className="flex justify-between items-center bg-white p-6 rounded-[1.8rem] border border-slate-100"
+                          className={`flex justify-between items-center bg-white p-6 rounded-[1.8rem] border ${isMissing ? 'border-red-100 bg-red-50/10' : 'border-slate-100'}`}
                         >
-                          <span className="text-xs font-black text-slate-700 italic truncate max-w-[500px]">
+                          <span className={`text-xs font-black ${isMissing ? 'text-red-400 decoration-red-200 line-through' : 'text-slate-700'} italic truncate max-w-[500px]`}>
                             {f.name}
                           </span>
-                          <a
-                            href={`${API_BASE_URL}${f.url}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-3 bg-blue-600 text-white rounded-xl hover:scale-110 shadow-xl"
-                          >
-                            <Download size={18} />
-                          </a>
+                          
+                          {isLoading ? (
+                            <div className="p-3 bg-slate-100 text-slate-400 rounded-xl animate-pulse">
+                              <Clock size={18} />
+                            </div>
+                          ) : !isMissing ? (
+                            <a
+                              href={`${API_BASE_URL}${f.url}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-3 bg-blue-600 text-white rounded-xl hover:scale-110 shadow-xl"
+                            >
+                              <Download size={18} />
+                            </a>
+                          ) : (
+                             <span className="text-[9px] font-black text-red-400 uppercase tracking-widest bg-red-50 px-3 py-2 rounded-lg border border-red-100">
+                               File Lost
+                             </span>
+                          )}
                         </div>
-                      ))
+                      )})
                     )}
                   </div>
                 </div>
@@ -442,3 +540,5 @@ export default function AdminOrders() {
     </div>
   );
 }
+
+export default AdminOrders;

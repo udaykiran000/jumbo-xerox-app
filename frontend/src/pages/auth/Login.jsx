@@ -1,5 +1,5 @@
-import React, { useState, useContext } from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Mail,
@@ -11,15 +11,19 @@ import {
   Sparkles,
 } from "lucide-react";
 import api from "../../services/api";
-import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { loginSuccess } from "../../redux/slices/authSlice";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  const navigate = useNavigate(); // Ensure navigate is used
+  const dispatch = useDispatch();
 
-  const { login } = useContext(AuthContext);
+  // Remove useContext(AuthContext)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +32,12 @@ export default function Login() {
     try {
       const { data } = await api.post("/auth/login", { email, password });
       toast.success(`Welcome back, ${data.name}!`);
-      login(data.token);
+      
+      // Dispatch Redux action
+      dispatch(loginSuccess(data.token));
+      
+      // Navigate to dashboard
+      navigate("/dashboard");
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "Invalid credentials";
@@ -39,10 +48,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#030712] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
       {/* 1. Background Decorative Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 rounded-full blur-[120px]" />
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-200/40 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-200/40 rounded-full blur-[120px]" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -54,16 +63,16 @@ export default function Login() {
         <div className="flex justify-center mb-8">
           <motion.div
             whileHover={{ rotate: 15 }}
-            className="p-4 bg-blue-600 rounded-[2rem] shadow-2xl shadow-blue-500/20 text-white"
+            className="p-4 bg-blue-600 rounded-[2rem] shadow-2xl shadow-blue-500/30 text-white"
           >
             <Printer size={32} />
           </motion.div>
         </div>
 
         {/* 2. Login Card */}
-        <div className="bg-white/[0.03] backdrop-blur-2xl border border-white/10 p-8 md:p-10 rounded-[3rem] shadow-2xl">
+        <div className="bg-white backdrop-blur-2xl border border-slate-200 p-8 md:p-10 rounded-[3rem] shadow-2xl">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-black text-white tracking-tight mb-2">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2">
               Welcome Back
             </h2>
             <p className="text-slate-500 text-sm font-medium italic">
@@ -78,7 +87,7 @@ export default function Login() {
                 Email Address
               </label>
               <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
                   <Mail size={18} />
                 </div>
                 <input
@@ -87,7 +96,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="w-full bg-slate-900/50 border border-white/5 p-4 pl-12 rounded-2xl text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                  className="w-full bg-slate-50 border border-slate-200 p-4 pl-12 rounded-2xl text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 font-bold"
                 />
               </div>
             </div>
@@ -100,14 +109,13 @@ export default function Login() {
                 </label>
                 <Link
                   to="/forgot-password"
-                  size={10}
-                  className="text-[10px] font-black uppercase text-blue-500 hover:underline"
+                  className="text-[10px] font-black uppercase text-blue-600 hover:underline"
                 >
                   Forgot?
                 </Link>
               </div>
               <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
                   <Lock size={18} />
                 </div>
                 <input
@@ -116,7 +124,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-slate-900/50 border border-white/5 p-4 pl-12 rounded-2xl text-white outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-700"
+                  className="w-full bg-slate-50 border border-slate-200 p-4 pl-12 rounded-2xl text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 font-bold"
                 />
               </div>
             </div>
@@ -125,7 +133,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full relative group bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-blue-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+              className="w-full relative group bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-blue-500/30 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
             >
               <div className="relative z-10 flex items-center justify-center gap-2">
                 {loading ? (
@@ -141,13 +149,13 @@ export default function Login() {
                 )}
               </div>
               {/* Shimmer Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
             </button>
           </form>
 
           {/* Social / Trust Badge */}
-          <div className="mt-8 pt-8 border-t border-white/5 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+          <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               <ShieldCheck size={14} className="text-emerald-500" /> Secure
               Encryption Active
             </div>
@@ -156,7 +164,7 @@ export default function Login() {
               New to Jumbo Xerox?{" "}
               <Link
                 to="/register"
-                className="text-white font-black hover:text-blue-400 transition-colors"
+                className="text-blue-600 font-black hover:text-blue-800 transition-colors"
               >
                 Create Account
               </Link>

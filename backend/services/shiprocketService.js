@@ -1,90 +1,122 @@
 const axios = require("axios");
 
-const SHIPROCKET_URL = "https://apiv2.shiprocket.in/v1/external";
+let token = null;
 
-const getAuthToken = async () => {
+const authenticate = async () => {
+  if (process.env.SHIPROCKET_TEST_MODE === "true") {
+    console.log("[SHIPROCKET-TEST] Skipping Authentication");
+    return "TEST_TOKEN";
+  }
+
   try {
-    const response = await axios.post(`${SHIPROCKET_URL}/auth/login`, {
-      email: process.env.SHIPROCKET_EMAIL,
-      password: process.env.SHIPROCKET_PASSWORD,
-    });
-    return response.data.token;
+    const response = await axios.post(
+      "https://apiv2.shiprocket.in/v1/external/auth/login",
+      {
+        email: process.env.SHIPROCKET_EMAIL,
+        password: process.env.SHIPROCKET_PASSWORD,
+      }
+    );
+    token = response.data.token;
+    return token;
   } catch (error) {
     console.error(
       "Shiprocket Auth Error:",
       error.response?.data || error.message
     );
-    return null;
+    throw new Error("Shiprocket Authentication Failed");
   }
 };
 
-exports.createShiprocketOrder = async (orderData) => {
-  // --- MOCK MODE CHECK ---
-  if (process.env.SHIPPING_MODE === "test") {
-    console.log("⚠️ SHIPROCKET RUNNING IN MOCK MODE");
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
+const createOrder = async (order) => {
+  if (process.env.SHIPROCKET_TEST_MODE === "true") {
+    console.log("[SHIPROCKET-TEST] Creating Mock Order for:", order._id);
     return {
-      shipment_id: `SHIP_MOCK_${Math.floor(Math.random() * 10000)}`,
-      awb_code: `AWB_MOCK_${Date.now()}`,
-      courier_name: "Dummy Express (Test)",
-      status: "NEW",
+      shipment_id: `MOCK_SHIP_${Math.floor(Math.random() * 100000)}`,
+      order_id: `MOCK_ORDER_${Math.floor(Math.random() * 100000)}`,
     };
   }
 
-  // --- REAL LOGIC ---
-  const token = await getAuthToken();
-  if (!token) throw new Error("Shiprocket Authentication Failed");
+  if (!token) await authenticate();
 
-  // Construct payload based on order details
-  const payload = {
-    order_id: orderData._id,
-    order_date: orderData.createdAt,
-    pickup_location_id: "Primary",
-    billing_customer_name: orderData.user.name,
+  // Map your Order model to Shiprocket structure
+  // This is a minimal example; you may need to map more fields
+  const orderData = {
+    order_id: order._id,
+    order_date: new Date(order.createdAt).toISOString().split("T")[0],
+    pickup_location: "Primary", // You need to set this in Shiprocket Panel
+    billing_customer_name: order.user.name,
     billing_last_name: "",
-    billing_address:
-      orderData.user.addresses?.find((a) => a.isDefault)?.street || "Guntur",
-    billing_city:
-      orderData.user.addresses?.find((a) => a.isDefault)?.city || "Guntur",
-    billing_pincode:
-      orderData.user.addresses?.find((a) => a.isDefault)?.pincode || "522001",
-    billing_state:
-      orderData.user.addresses?.find((a) => a.isDefault)?.state ||
-      "Andhra Pradesh",
+    billing_address: order.shippingAddress.street,
+    billing_address_2: "",
+    billing_city: order.shippingAddress.city,
+    billing_pincode: order.shippingAddress.pincode,
+    billing_state: "Maharashtra", // Needs to be dynamic or fixed based on your region
     billing_country: "India",
-    billing_email: orderData.user.email,
-    billing_phone: orderData.user.phone || "9999999999",
+    billing_email: "customer@example.com", // Add email to your User model if needed
+    billing_phone: order.user.phone,
     shipping_is_billing: true,
     order_items: [
       {
-        name: "Print Order #" + orderData._id.slice(-5),
-        sku: "PRINT-" + orderData._id.slice(-5),
+        name: "Print Service",
+        sku: "PRINT_SRV",
         units: 1,
-        selling_price: orderData.totalAmount,
+        selling_price: order.totalAmount,
       },
     ],
-    payment_method: orderData.paymentMethod === "Online" ? "Prepaid" : "COD",
-    sub_total: orderData.totalAmount,
+    payment_method: order.paymentStatus === "Paid" ? "Prepaid" : "COD",
+    sub_total: order.totalAmount,
     length: 10,
     breadth: 10,
-    height: 5,
+    height: 10,
     weight: 0.5,
   };
 
   try {
     const response = await axios.post(
-      `${SHIPROCKET_URL}/orders/create/adhoc`,
-      payload,
+      "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc",
+      orderData,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
     return response.data;
   } catch (error) {
-    throw new Error(
-      error.response?.data?.message || "Failed to create Shiprocket Order"
+    if (error.response?.status === 401) {
+      await authenticate(); // Retry once
+      return createOrder(order);
+    }
+    console.error(
+      "Shiprocket Order Error:",
+      error.response?.data || error.message
     );
+    throw new Error("Shiprocket Order Creation Failed");
   }
 };
+
+const generateAWB = async (shipmentId) => {
+  if (process.env.SHIPROCKET_TEST_MODE === "true") {
+    console.log("[SHIPROCKET-TEST] Generating Mock AWB for:", shipmentId);
+    return {
+      awb_code: `MOCK_AWB_${Math.floor(Math.random() * 1000000000)}`,
+      courier_name: "Test Courier Service",
+    };
+  }
+
+  if (!token) await authenticate();
+
+  try {
+    const response = await axios.post(
+      "https://apiv2.shiprocket.in/v1/external/courier/assign/awb",
+      { shipment_id: shipmentId },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data.response.data;
+  } catch (error) {
+    console.error("Shiprocket AWB Error:", error.response?.data || error.message);
+    throw new Error("Shiprocket AWB Generation Failed");
+  }
+};
+
+module.exports = { authenticate, createOrder, generateAWB };

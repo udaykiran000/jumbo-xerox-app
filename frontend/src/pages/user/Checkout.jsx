@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import api from "../../services/api";
 import toast from "react-hot-toast";
@@ -16,21 +16,26 @@ import {
   RefreshCcw,
   CheckCircle2,
 } from "lucide-react";
-import { AuthContext } from "../../context/AuthContext";
-import { useConfig } from "../../context/ConfigContext";
+// import { AuthContext } from "../../context/AuthContext"; // Removed
+// import { useConfig } from "../../context/ConfigContext"; // Removed
 import { motion, AnimatePresence } from "framer-motion";
 import { displayRazorpay } from "../../services/paymentService";
 
 const DELIVERY_CHARGE = 90;
 
+import { useSelector } from "react-redux";
+import { selectUser } from "../../redux/slices/authSlice";
+import { selectConfig } from "../../redux/slices/configSlice";
+
 const Checkout = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
-  const config = useConfig();
+  const user = useSelector(selectUser);
+  const config = useSelector(selectConfig);
 
   // --- 1. CORE STATES (Updated for Sync) ---
-  const [deliveryMode, setDeliveryMode] = useState("Pickup");
+  const [deliveryMode, setDeliveryMode] = useState(null);
+  const [isModeError, setIsModeError] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Online");
   const [instructions, setInstructions] = useState(state?.instructions || "");
   const [pickupDetails, setPickupDetails] = useState({
@@ -89,7 +94,37 @@ const Checkout = () => {
     [deliveryMode, subtotal],
   );
 
+  // Error States
+  const [isNameError, setIsNameError] = useState(false);
+  const [isPhoneError, setIsPhoneError] = useState(false);
+  const [isAddressError, setIsAddressError] = useState(false);
+
   const handlePlaceOrderClick = async () => {
+    // Reset Errors
+    setIsNameError(false);
+    setIsPhoneError(false);
+    setIsAddressError(false);
+    setIsModeError(false);
+
+    // 1. Validate Delivery Mode
+    if (!deliveryMode) {
+      setIsModeError(true);
+      return toast.error("Please select Pickup or Home Delivery!");
+    }
+
+    // 2. Validate Address (if Delivery)
+    if (deliveryMode === "Delivery" && addressList.length === 0) {
+      setIsAddressError(true);
+      return toast.error("Please add a delivery address first!");
+    }
+
+    // 3. Validate Pickup Name (if Pickup)
+    if (deliveryMode === "Pickup" && !pickupDetails.name.trim()) {
+      setIsNameError(true);
+      return toast.error("Pickup person name is required!");
+    }
+
+    // 4. Validate Phone (Dynamic Source)
     // Upgraded Validation: Priority given to localPhone (Fresh from API)
     const targetPhone =
       deliveryMode === "Pickup" ? pickupDetails.phone : localPhone;
@@ -97,10 +132,8 @@ const Checkout = () => {
     console.log("[DEBUG-VALIDATION] Validating phone:", targetPhone);
 
     if (!targetPhone || targetPhone.length < 10) {
+      setIsPhoneError(true);
       return toast.error("Valid phone number required!");
-    }
-    if (deliveryMode === "Delivery" && addressList.length === 0) {
-      return toast.error("Please add a delivery address first!");
     }
 
     // OTP Bypass Logic (Restored Integrity)
@@ -253,21 +286,21 @@ const Checkout = () => {
 
       <div className="grid lg:grid-cols-12 gap-10">
         <div className="lg:col-span-8 space-y-10">
-          <div className="bg-white p-8 md:p-10 rounded-[3rem] border border-gray-100 shadow-xl shadow-blue-900/5">
-            <h3 className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mb-10">
-              Select Logistics Mode
+          <div className={`bg-white p-8 md:p-10 rounded-[3rem] border transition-all duration-300 shadow-xl ${isModeError ? "border-red-500 shadow-red-100 ring-4 ring-red-50" : "border-gray-100 shadow-blue-900/5"}`}>
+            <h3 className={`text-center text-[10px] font-black uppercase tracking-widest mb-10 ${isModeError ? "text-red-500 animate-pulse" : "text-slate-400"}`}>
+              Select: Pickup or Home Delivery <span className="text-red-500">*</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <OptionCard
                 active={deliveryMode === "Pickup"}
-                onClick={() => setDeliveryMode("Pickup")}
+                onClick={() => { setDeliveryMode("Pickup"); setIsModeError(false); }}
                 icon={<Store size={24} />}
                 title="STORE PICKUP"
                 desc="Self collection at hub"
               />
               <OptionCard
                 active={deliveryMode === "Delivery"}
-                onClick={() => setDeliveryMode("Delivery")}
+                onClick={() => { setDeliveryMode("Delivery"); setIsModeError(false); }}
                 icon={<Truck size={24} />}
                 title="HOME DELIVERY"
                 desc={`Standard ₹${DELIVERY_CHARGE} Fee`}
@@ -294,18 +327,22 @@ const Checkout = () => {
                     <InputGroup
                       label="Pickup Person Name"
                       value={pickupDetails.name}
-                      onChange={(v) =>
-                        setPickupDetails({ ...pickupDetails, name: v })
-                      }
+                      onChange={(v) => {
+                        setPickupDetails({ ...pickupDetails, name: v });
+                        setIsNameError(false);
+                      }}
                       placeholder="Full Identity"
+                      error={isNameError}
                     />
                     <InputGroup
                       label="Identity Mobile"
                       value={pickupDetails.phone}
-                      onChange={(v) =>
-                        setPickupDetails({ ...pickupDetails, phone: v })
-                      }
+                      onChange={(v) => {
+                        setPickupDetails({ ...pickupDetails, phone: v });
+                        setIsPhoneError(false);
+                      }}
                       placeholder="10-digit number"
+                      error={isPhoneError}
                     />
                   </div>
                 </div>
@@ -330,7 +367,7 @@ const Checkout = () => {
                 key="delivery"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-8 md:p-10 rounded-[3rem] border border-blue-100 shadow-lg shadow-blue-900/5 space-y-8"
+                className={`bg-white p-8 md:p-10 rounded-[3rem] border shadow-lg space-y-8 transition-all duration-300 ${isAddressError ? "border-red-500 shadow-red-100 ring-4 ring-red-50" : "border-blue-100 shadow-blue-900/5"}`}
               >
                 <div className="flex justify-between items-center px-2">
                   <div className="flex items-center gap-4">
@@ -669,17 +706,18 @@ const OptionCard = ({ active, onClick, icon, title, desc }) => (
   </div>
 );
 
-const InputGroup = ({ label, value, onChange, placeholder }) => (
+const InputGroup = ({ label, value, onChange, placeholder, error }) => (
   <div className="space-y-2 text-left">
-    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">
-      {label}
+    <label className={`text-[9px] font-black uppercase tracking-widest ml-4 transition-colors ${error ? "text-red-500 animate-pulse" : "text-slate-400"}`}>
+      {label} {error && "*"}
     </label>
     <input
       required
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-gray-50 border border-gray-100 rounded-[1.5rem] p-5 font-bold text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-inner"
+      className={`w-full bg-gray-50 border rounded-[1.5rem] p-5 font-bold text-slate-800 text-xs focus:ring-2 outline-none transition-all shadow-inner 
+        ${error ? "border-red-500 focus:ring-red-200 bg-red-50/10" : "border-gray-100 focus:ring-blue-500"}`}
       placeholder={placeholder}
     />
   </div>

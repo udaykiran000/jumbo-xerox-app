@@ -19,6 +19,9 @@ const {
   verifyOrderOTP,
   updateOrderStatus,
   toggleUserStatus,
+  createShipment,
+  getShipmentLabel,
+  getShipmentTracking,
 } = require("../controllers/adminController");
 
 const { downloadOrderZip } = require("../controllers/uploadController");
@@ -43,6 +46,11 @@ router.get("/orders-for-deletion", getOrdersForDeletion);
 router.get("/order/:id", getOrderById);
 router.put("/order/:id", updateOrderStatus);
 router.delete("/order/files/:orderId", deleteFilesManually);
+
+// Shipment Routes
+router.post("/shipment/create", createShipment);
+router.get("/shipment/label/:orderId", getShipmentLabel);
+router.get("/shipment/track/:orderId", getShipmentTracking);
 
 // Dedicated Zip Download Route
 router.get("/download-zip/:orderId", downloadOrderZip);

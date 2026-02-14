@@ -32,7 +32,7 @@ exports.verifyPayment = async (req, res) => {
     await Order.findByIdAndUpdate(dbOrderId, {
       paymentStatus: "Paid",
       paymentId: razorpay_payment_id,
-      status: "Processing",
+      status: "Pending", // Default to Pending until Admin reviews
     });
 
     return res.status(200).json({

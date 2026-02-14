@@ -22,6 +22,26 @@ export default function AdminShipments() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedShipment, setSelectedShipment] = useState(null);
+  const [trackingData, setTrackingData] = useState(null);
+
+  // Fetch Tracking Data when shipment is selected
+  useEffect(() => {
+    if (selectedShipment && selectedShipment.shipmentId) {
+      const fetchTracking = async () => {
+        try {
+          const res = await api.get(
+            `/admin/shipment/track/${selectedShipment._id}`
+          );
+          setTrackingData(res.data.tracking_data);
+        } catch (e) {
+          console.error("Tracking Error:", e);
+        }
+      };
+      fetchTracking();
+    } else {
+      setTrackingData(null);
+    }
+  }, [selectedShipment]);
 
   useEffect(() => {
     fetchShipmentOrders();
@@ -32,7 +52,11 @@ export default function AdminShipments() {
     try {
       const { data } = await api.get("/admin/orders");
       // Filter orders that are either Paid or marked for Delivery
-      setOrders(data.orders.filter((o) => o.deliveryMode === "Delivery"));
+      setOrders(
+        data.orders.filter(
+          (o) => o.deliveryMode === "Delivery"
+        )
+      );
     } catch (e) {
       toast.error("Shipment data load failed");
     } finally {
@@ -151,18 +175,28 @@ export default function AdminShipments() {
                       </span>
                     </td>
                     <td className="p-6 text-[10px] font-mono text-slate-400 italic">
-                      Not Created
+                      {o.shipmentId ? o.shipmentId.slice(-8) : "Not Created"}
                     </td>
                     <td className="p-6 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      Not Shipped
+                      {o.shipmentId ? "Shipped" : "Not Shipped"}
                     </td>
                     <td className="p-6 text-center">
-                      <button
-                        onClick={() => setSelectedShipment(o)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-700 flex items-center gap-2 mx-auto"
-                      >
-                        + Create Shipment
-                      </button>
+                      {o.status === "Completed" && !o.shipmentId && (
+                        <button
+                          onClick={() => setSelectedShipment(o)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-700 flex items-center gap-2 mx-auto"
+                        >
+                          + Create Shipment
+                        </button>
+                      )}
+                      {o.status === "Completed" && o.shipmentId && (
+                        <button
+                          onClick={() => setSelectedShipment(o)}
+                          className="bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-purple-700 flex items-center gap-2 mx-auto"
+                        >
+                          <Eye size={14} /> View Tracking
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -221,12 +255,12 @@ export default function AdminShipments() {
                         Current Status
                       </p>
                       <h3 className="text-xl font-black text-slate-800">
-                        Pending
+                        {trackingData?.current_status || "Pending"}
                       </h3>
                     </div>
                   </div>
                   <span className="px-4 py-1.5 bg-orange-100 text-orange-600 rounded-full text-[10px] font-black uppercase">
-                    Pending
+                    {trackingData?.current_status || "Pending"}
                   </span>
                 </div>
 
@@ -257,7 +291,7 @@ export default function AdminShipments() {
                           AWB Number
                         </p>
                         <p className="text-xs font-black italic opacity-80">
-                          Pending Assignment
+                          {selectedShipment.shipmentId || "Pending Assignment"}
                         </p>
                       </div>
                       <div>
@@ -305,12 +339,9 @@ export default function AdminShipments() {
                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-100 p-10 rounded-[2.5rem] flex flex-col items-center justify-center text-center space-y-4 border-dashed">
-                  <div className="p-4 bg-orange-50 text-orange-500 rounded-full">
-                    <Clock size={32} />
-                  </div>
+                <div className="bg-white border border-gray-100 p-10 rounded-[2.5rem] flex flex-col text-center space-y-4 border-dashed">
                   <h4 className="text-lg font-black text-slate-800">
-                    Tracking Data Pending
+                    Tracking Timeline
                   </h4>
                   <p className="text-xs font-bold text-slate-400 max-w-sm">
                     Tracking information will be available once the shipment is
@@ -320,12 +351,60 @@ export default function AdminShipments() {
               </div>
 
               <div className="p-8 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                <button className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-100">
-                  View Order Details
-                </button>
-                <button className="bg-purple-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-purple-100">
-                  Download Label
-                </button>
+                {!selectedShipment.shipmentId && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        console.log("Sending Create Request...");
+                        const { data } = await api.post("/admin/shipment/create", {
+                          orderId: selectedShipment._id,
+                        });
+                        console.log("Create Response:", data);
+                        
+                        toast.success("Shipment Generated!");
+                        
+                        // Update local state to show buttons immediately
+                        const updatedShipment = {
+                           ...selectedShipment,
+                           shipmentId: data.order.shipmentId,
+                           awbNumber: data.order.awbNumber
+                        };
+                        console.log("Updating State to:", updatedShipment);
+                        setSelectedShipment(updatedShipment);
+                        
+                        fetchShipmentOrders(); // Refresh list to update background
+                      } catch (e) {
+                         console.error("Create Failed:", e);
+                        toast.error("Failed to create shipment");
+                      }
+                    }}
+                    className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-100"
+                  >
+                    Generate Shipment ID
+                  </button>
+                )}
+                
+                {selectedShipment.shipmentId && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { data } = await api.get(
+                          `/admin/shipment/label/${selectedShipment._id}`
+                        );
+                        if (data.labelUrl) {
+                          window.open(data.labelUrl, "_blank");
+                        } else {
+                          toast.error("Label not generated yet");
+                        }
+                      } catch (e) {
+                        toast.error("Failed to fetch label");
+                      }
+                    }}
+                    className="bg-purple-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-purple-100 hover:bg-purple-700 transition-colors"
+                  >
+                    Download Label
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>

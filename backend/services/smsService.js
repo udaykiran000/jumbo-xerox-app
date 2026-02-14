@@ -1,12 +1,13 @@
 const axios = require("axios");
 
 // SMS GATEWAY CONFIG (Sync with your PHP credentials)
+// SMS GATEWAY CONFIG (Loaded from .env)
 const SMS_CONFIG = {
-  username: "NEWCYBER",
-  apikey: "4d84f1c522557793ebf9",
-  senderid: "JUMBOX",
-  templateid: "1707176416922923689",
-  baseUrl: "https://smslogin.co/v3/api.php",
+  username: process.env.SMS_USERNAME,
+  apikey: process.env.SMS_API_KEY,
+  senderid: process.env.SMS_SENDER_ID,
+  templateid: process.env.SMS_TEMPLATE_ID,
+  baseUrl: process.env.SMS_BASE_URL,
 };
 
 /**

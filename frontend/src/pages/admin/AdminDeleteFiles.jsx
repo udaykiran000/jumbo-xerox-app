@@ -18,27 +18,40 @@ export default function AdminDeleteFiles() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- 1. CORE LOGIC: UNDO TIMER STATES (Original Integrity Preserved) ---
-  const [countingOrderId, setCountingOrderId] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const timerRef = useRef(null);
+  // --- 1. CORE LOGIC: MULTI-TIMER ARCHITECTURE (Refactored) ---
+  // timers: { [orderId]: secondsRemaining } for Visuals
+  const [timers, setTimers] = useState({});
+  // timeouts: { [orderId]: timeoutID } for Logic execution
+  const timeouts = useRef({});
 
   useEffect(() => {
     fetchOrders();
+    // Cleanup on unmount: clear all pending timeouts
+    return () => {
+      Object.values(timeouts.current).forEach((id) => clearTimeout(id));
+    };
   }, []);
 
-  // Timer Countdown Logic (Original Logic Maintained)
+  // Global Visual Ticker: Decrements all active visual timers
   useEffect(() => {
-    if (timeLeft > 0) {
-      timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-    } else if (timeLeft === 0 && countingOrderId) {
-      commitDeletion(countingOrderId);
-    }
-    return () => clearTimeout(timerRef.current);
-  }, [timeLeft, countingOrderId]);
+    const interval = setInterval(() => {
+      setTimers((prev) => {
+        const next = { ...prev };
+        let hasChanges = false;
+        Object.keys(next).forEach((id) => {
+          if (next[id] > 0) {
+            next[id] -= 1;
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchOrders = async () => {
-    console.log("[DEBUG-FILE] Fetching holistic storage metadata...");
+    // console.log("[DEBUG-FILE] Fetching holistic storage metadata...");
     try {
       setLoading(true);
       // Holistic Connectivity: Fetching both Paid (Finalized) and Unpaid orders
@@ -52,27 +65,48 @@ export default function AdminDeleteFiles() {
   };
 
   const triggerDeletion = (id) => {
-    setCountingOrderId(id);
-    setTimeLeft(7);
+    // 1. Set Visual Timer
+    setTimers((prev) => ({ ...prev, [id]: 7 }));
     toast("Asset purge will execute in 7s...", { icon: "⏳" });
+
+    // 2. Schedule Execution (Independent of Render Cycle)
+    if (timeouts.current[id]) clearTimeout(timeouts.current[id]);
+    
+    timeouts.current[id] = setTimeout(() => {
+      commitDeletion(id);
+    }, 7000);
   };
 
-  const cancelDeletion = () => {
-    clearTimeout(timerRef.current);
-    setCountingOrderId(null);
-    setTimeLeft(0);
+  const cancelDeletion = (id) => {
+    // 1. Clear Execution
+    if (timeouts.current[id]) {
+      clearTimeout(timeouts.current[id]);
+      delete timeouts.current[id];
+    }
+    // 2. Clear Visual
+    setTimers((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     toast.success("Purge Cancelled", { icon: "🔄" });
   };
 
   const commitDeletion = async (id) => {
     try {
+      // Clear local state first to update UI immediately
+      setTimers((prev) => {
+         const next = { ...prev };
+         delete next[id];
+         return next;
+      });
+      delete timeouts.current[id];
+
       await api.delete(`/admin/order/files/${id}`);
       toast.success("Disk storage cleared!");
-      setCountingOrderId(null);
       fetchOrders();
     } catch (e) {
       toast.error(e.response?.data?.message || "File purge protocol failed");
-      setCountingOrderId(null);
     }
   };
 
@@ -93,11 +127,11 @@ export default function AdminDeleteFiles() {
             <Trash2 size={32} />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Disk Optimization
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Actions
             </p>
-            <h1 className="text-3xl font-black text-slate-900 leading-none italic uppercase tracking-tighter">
-              Storage Master
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+              File Management
             </h1>
           </div>
         </div>
@@ -109,8 +143,8 @@ export default function AdminDeleteFiles() {
           />
           <input
             type="text"
-            placeholder="Search by ID or Name..."
-            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-[10px] font-black focus:ring-2 focus:ring-red-500 outline-none shadow-sm"
+            placeholder="Search..."
+            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-red-500 outline-none shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -118,28 +152,28 @@ export default function AdminDeleteFiles() {
       </div>
 
       {/* STORAGE TABLE */}
-      <div className="bg-white border border-gray-200 rounded-[2.5rem] overflow-hidden shadow-xl">
-        <div className="bg-slate-950 p-6 flex items-center justify-between">
+      <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-xl">
+        <div className="bg-slate-900 p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <FileText className="text-white/40" size={20} />
-            <h3 className="text-white font-black text-lg italic uppercase tracking-tighter">
-              Asset Purge Queue
+            <FileText className="text-slate-400" size={20} />
+            <h3 className="text-white font-bold text-lg">
+              Purge Queue
             </h3>
           </div>
-          <span className="text-[9px] font-black text-white/60 bg-white/5 px-4 py-1.5 rounded-full uppercase tracking-widest border border-white/10">
-            Total Records: {filteredOrders.length}
+          <span className="text-xs font-medium text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+            Total: {filteredOrders.length}
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[1000px]">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                <th className="p-7">Order ID</th>
-                <th className="p-7">Customer / Payment</th>
-                <th className="p-7 text-center">Order Age</th>
-                <th className="p-7 text-center">Files Status</th>
-                <th className="p-7 text-center">Actions</th>
+              <tr className="bg-gray-50 border-b border-gray-100 text-xs font-semibold uppercase text-slate-500 tracking-wide">
+                <th className="p-6">Order ID</th>
+                <th className="p-6">Customer / Payment</th>
+                <th className="p-6 text-center">Age</th>
+                <th className="p-6 text-center">Status</th>
+                <th className="p-6 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -159,6 +193,7 @@ export default function AdminDeleteFiles() {
                       (1000 * 60 * 60 * 24),
                   );
                   const isStale = daysOld >= 2; // Flag for older orders
+                  const isCounting = timers[o._id] !== undefined;
 
                   return (
                     <tr
@@ -206,19 +241,19 @@ export default function AdminDeleteFiles() {
                             <span className="text-[9px] font-black uppercase text-slate-400 bg-gray-100 px-4 py-2 rounded-xl border flex items-center gap-2 italic tracking-widest">
                               <CheckCircle2 size={12} /> Assets Purged
                             </span>
-                          ) : countingOrderId === o._id ? (
+                          ) : isCounting ? (
                             <button
-                              onClick={cancelDeletion}
+                              onClick={() => cancelDeletion(o._id)}
                               className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black flex items-center gap-2 shadow-xl shadow-blue-200 animate-pulse"
                             >
-                              <RotateCcw size={14} /> STOP DELETE ({timeLeft}s)
+                              <RotateCcw size={14} /> STOP ({timers[o._id]}s)
                             </button>
                           ) : (
                             <button
                               onClick={() => triggerDeletion(o._id)}
-                              className="bg-red-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black flex items-center gap-2 hover:bg-red-700 transition-all shadow-xl shadow-red-100 active:scale-95"
+                              className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-red-700 transition-all shadow-sm active:scale-95"
                             >
-                              <Trash2 size={14} /> PURGE ASSETS
+                              <Trash2 size={14} /> DELETE PERMANENTLY
                             </button>
                           )}
                         </div>
@@ -233,7 +268,7 @@ export default function AdminDeleteFiles() {
       </div>
 
       {/* SYSTEM SECURITY NOTICE */}
-      <div className="bg-orange-50 border border-orange-100 p-8 rounded-[2.5rem] flex items-start gap-5 shadow-sm">
+      <div className="bg-orange-50 border border-orange-100 p-8 rounded-3xl flex items-start gap-5 shadow-sm">
         <AlertCircle className="text-orange-500 shrink-0 mt-1" size={28} />
         <div className="space-y-2">
           <p className="text-[12px] font-black text-orange-800 uppercase tracking-widest">

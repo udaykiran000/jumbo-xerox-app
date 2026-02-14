@@ -52,8 +52,8 @@ export default function AdminDashboard() {
     return (
       <div className="h-96 flex flex-col items-center justify-center text-blue-600 gap-4">
         <Loader2 className="animate-spin" size={32} />
-        <p className="font-black text-[10px] uppercase tracking-[0.4em]">
-          Loading Master Dashboard...
+        <p className="font-semibold text-sm uppercase tracking-wider">
+          Loading Dashboard...
         </p>
       </div>
     );
@@ -103,11 +103,11 @@ export default function AdminDashboard() {
       {/* 1. HEADER SECTION (BRIGHT UI) */}
       <div className="flex justify-between items-end">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600 mb-1">
-            Live Control Center
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
+            Overview
           </p>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight italic">
-            Admin Dashboard
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            Dashboard
           </h1>
         </div>
         <div className="hidden md:block text-right">
@@ -127,16 +127,16 @@ export default function AdminDashboard() {
             key={i}
             whileHover={{ y: -8, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300 }}
-            className={`${card.color} p-8 rounded-[3rem] text-white shadow-2xl shadow-blue-900/10 relative overflow-hidden group cursor-default`}
+            className={`${card.color} p-8 rounded-3xl text-white shadow-2xl shadow-blue-900/10 relative overflow-hidden group cursor-default`}
           >
             <div className="relative z-10">
-              <div className="bg-white/20 w-fit p-4 rounded-[1.5rem] mb-6 shadow-inner group-hover:scale-110 transition-transform">
+              <div className="bg-white/20 w-fit p-4 rounded-2xl mb-6 shadow-inner group-hover:scale-110 transition-transform">
                 {card.icon}
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">
+              <p className="text-xs font-bold uppercase tracking-wide opacity-70 mb-1">
                 {card.title}
               </p>
-              <h3 className="text-4xl font-black tracking-tighter">
+              <h3 className="text-3xl font-bold tracking-tight">
                 {card.value}
               </h3>
               {card.sub && (
@@ -155,15 +155,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* 3. RECENT ACTIVITY HUB (Actionable UI) */}
-      <div className="bg-white border border-gray-100 rounded-[3rem] overflow-hidden shadow-xl shadow-blue-900/5 animate-in slide-in-from-bottom duration-700">
+      <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-xl shadow-blue-900/5 animate-in slide-in-from-bottom duration-700">
         <div className="p-8 md:p-10 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-          <h3 className="font-black text-xl text-slate-800 flex items-center gap-3">
-            <Activity className="text-blue-600" size={22} /> Live Activity
-            Stream
+          <h3 className="font-bold text-lg text-slate-800 flex items-center gap-3">
+            <Activity className="text-blue-600" size={20} /> Recent Activity
           </h3>
           <button
             onClick={() => navigate("/admin/orders")}
-            className="text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white px-8 py-3 rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
+            className="text-xs font-bold uppercase tracking-wide bg-blue-600 text-white px-6 py-2.5 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
           >
             Manage All
           </button>
@@ -179,7 +178,7 @@ export default function AdminDashboard() {
               <div
                 key={idx}
                 onClick={() => handleActivityClick(item)}
-                className="flex items-center gap-5 p-6 rounded-[2rem] bg-white border border-gray-100 hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group"
+                className="flex items-center gap-5 p-6 rounded-3xl bg-white border border-gray-100 hover:border-blue-300 hover:bg-blue-50/20 transition-all cursor-pointer group"
               >
                 <div
                   className={`p-4 rounded-2xl shadow-sm group-hover:shadow-lg transition-all ${
@@ -196,25 +195,23 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-black text-slate-900 text-base">
+                    <p className="font-semibold text-slate-900 text-sm">
                       {item.type === "order"
                         ? `${item.user?.name || "Customer"} placed a New Order`
                         : `${item.name} joined Jumbo Xerox`}
                     </p>
                     {!item.isRead && item.type === "order" && (
-                      <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                      <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
                     )}
                   </div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     {item.type === "order"
-                      ? `Transaction: ₹${item.totalAmount} • ${
-                          item.paymentMethod
-                        } • ID: #${item._id?.slice(-6).toUpperCase()}`
-                      : `Identity Verified: ${item.email}`}
+                      ? `₹${item.totalAmount} • ${item.paymentMethod} • #${item._id?.slice(-6).toUpperCase()}`
+                      : `${item.email}`}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest group-hover:text-blue-600 transition-colors">
+                  <p className="text-xs font-semibold text-slate-400 group-hover:text-blue-600 transition-colors">
                     {new Date(item.activityTime).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",

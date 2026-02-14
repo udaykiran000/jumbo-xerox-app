@@ -38,6 +38,9 @@ export default {
         "4xl": "2rem",
         "5xl": "2.5rem",
       },
+      fontFamily: {
+        sans: ["Inter", "sans-serif"],
+      },
     },
   },
   // 2. Imported variables ni ikkada pass cheyali
