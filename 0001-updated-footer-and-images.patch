@@ -1,0 +1,386 @@
+From 4e767447cc2423d9981b0732e2ad228a76a2af99 Mon Sep 17 00:00:00 2001
+From: RAKESH-KUMAR-N3 <nrakeshkumar36@gmail.com>
+Date: Sun, 15 Feb 2026 01:13:05 +0530
+Subject: [PATCH] updated footer and images
+
+---
+ backend/config/db.js                      |   6 +-
+ backend/package.json                      |   4 +-
+ backend/server.js                         |  14 ++-
+ frontend/package-lock.json                |   8 +-
+ frontend/src/components/common/Footer.jsx | 109 +++++++++++-----------
+ frontend/src/pages/static/Home.jsx        |  15 ++-
+ 6 files changed, 76 insertions(+), 80 deletions(-)
+
+diff --git a/backend/config/db.js b/backend/config/db.js
+index d0e2dbc..e0c46a6 100644
+--- a/backend/config/db.js
++++ b/backend/config/db.js
+@@ -2,10 +2,12 @@ const mongoose = require("mongoose");
+ 
+ const connectDB = async () => {
+   try {
+-    const conn = await mongoose.connect(process.env.MONGO_URL);
++    const conn = await mongoose.connect(process.env.MONGO_URL, {
++      family: 4, // IPv4 ని వాడుతుంది, ఇది చాలా ముఖ్యం!
++    });
+     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+   } catch (error) {
+-    console.error(`❌ Error: ${error.message}`);
++    console.error(`❌ DB Error: ${error.message}`);
+     process.exit(1);
+   }
+ };
+diff --git a/backend/package.json b/backend/package.json
+index f670802..8f1d684 100644
+--- a/backend/package.json
++++ b/backend/package.json
+@@ -5,7 +5,7 @@
+   "scripts": {
+     "test": "echo \"Error: no test specified\" && exit 1",
+     "start": "node server.js",
+-    "dev": "nodemon --watch .env --watch server.js server.js"
++    "dev": "set NODE_OPTIONS=-r C:\\node-scripts\\dns-fix.js&& nodemon --watch .env --watch server.js server.js"
+   },
+   "keywords": [],
+   "author": "",
+@@ -32,4 +32,4 @@
+     "nodemo": "^1.0.0",
+     "nodemon": "^3.1.11"
+   }
+-}
++}
+\ No newline at end of file
+diff --git a/backend/server.js b/backend/server.js
+index a895784..09eb4e2 100644
+--- a/backend/server.js
++++ b/backend/server.js
+@@ -1,4 +1,4 @@
+-require("dotenv").config()
++require("dotenv").config();
+ const express = require("express");
+ const mongoose = require("mongoose");
+ const cors = require("cors");
+@@ -14,8 +14,11 @@ app.use(express.json({ limit: "500mb" }));
+ app.use(express.urlencoded({ limit: "500mb", extended: true }));
+ 
+ // 2. Database Connection
++// { family: 4 } అనేది సేఫ్టీ కోసం ఉంచుతున్నాం, ఇది ప్రొడక్షన్ లో కూడా మంచిదే.
+ mongoose
+-  .connect(process.env.MONGO_URL)
++  .connect(process.env.MONGO_URL, {
++    family: 4, 
++  })
+   .then(() => console.log("✅ MongoDB Connected"))
+   .catch((err) => console.log("❌ DB Error:", err));
+ 
+@@ -29,7 +32,6 @@ app.use("/api/uploads", express.static(uploadsPath));
+ app.use("/uploads", express.static(uploadsPath));
+ 
+ // 4. Static Files (Frontend Build Path)
+-
+ const buildPath = path.join(__dirname, "..", "frontend", "dist");
+ app.use(express.static(buildPath));
+ 
+@@ -43,9 +45,7 @@ app.use("/api/payments", require("./routes/paymentRoutes"));
+ app.use("/api/config", require("./routes/configRoutes"));
+ 
+ // 6. Catch-all Middleware (EXPRESS 5 FIX)
+-
+ app.use((req, res, next) => {
+-  
+   if (req.path.startsWith("/api")) {
+     return res.status(404).json({
+       success: false,
+@@ -53,10 +53,8 @@ app.use((req, res, next) => {
+     });
+   }
+ 
+-  
+   res.sendFile(path.join(buildPath, "index.html"), (err) => {
+     if (err) {
+-    
+       next();
+     }
+   });
+@@ -66,5 +64,5 @@ app.use((req, res, next) => {
+ app.use(errorHandler);
+ 
+ // 8. Server Start
+-const PORT = process.env.PORT || 10000;
++const PORT = process.env.PORT || 5000;
+ app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+\ No newline at end of file
+diff --git a/frontend/package-lock.json b/frontend/package-lock.json
+index b57a794..0ad5be9 100644
+--- a/frontend/package-lock.json
++++ b/frontend/package-lock.json
+@@ -14,7 +14,6 @@
+         "axios": "^1.13.2",
+         "framer-motion": "^12.23.26",
+         "idb": "^8.0.3",
+-        "jumbo-xerox-main": "file:..",
+         "jwt-decode": "^4.0.0",
+         "lucide-react": "^0.562.0",
+         "pdfjs-dist": "^5.4.449",
+@@ -43,7 +42,8 @@
+     },
+     "..": {
+       "name": "jumbo-xerox-main",
+-      "version": "1.0.0"
++      "version": "1.0.0",
++      "extraneous": true
+     },
+     "node_modules/@alloc/quick-lru": {
+       "version": "5.2.0",
+@@ -3062,10 +3062,6 @@
+         "node": ">=6"
+       }
+     },
+-    "node_modules/jumbo-xerox-main": {
+-      "resolved": "..",
+-      "link": true
+-    },
+     "node_modules/jwt-decode": {
+       "version": "4.0.0",
+       "resolved": "https://registry.npmjs.org/jwt-decode/-/jwt-decode-4.0.0.tgz",
+diff --git a/frontend/src/components/common/Footer.jsx b/frontend/src/components/common/Footer.jsx
+index 18de632..67bf00c 100644
+--- a/frontend/src/components/common/Footer.jsx
++++ b/frontend/src/components/common/Footer.jsx
+@@ -16,83 +16,88 @@ import { FaWhatsapp } from "react-icons/fa";
+ 
+ export default function Footer() {
+   return (
+-    <footer className="relative bg-[#0f172a] text-gray-100 overflow-hidden rounded-t-[50px] md:rounded-t-[100px]">
+-      {/* 1. FEATURES SECTION (From Home.jsx) */}
+-      <section className="py-20 border-b border-gray-800/50">
+-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16 text-center px-4">
++    <footer className="relative bg-[#0f172a] text-gray-100 overflow-hidden md:rounded-t-[80px] text-[11px] md:text-base">
++      {/* 1. FEATURES SECTION */}
++      <section className="py-6 md:py-20 border-b border-gray-800/50">
++        <div className="max-w-6xl mx-auto grid grid-cols-3 md:grid-cols-3 gap-4 md:gap-16 text-center px-4">
+           <div className="flex flex-col items-center group">
+-            <div className="bg-blue-600 p-8 rounded-[35px] mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
+-              <FiCheckCircle size={40} />
++            <div className="bg-blue-600 p-4 md:p-8 rounded-[25px] md:rounded-[35px] mb-3 md:mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
++              <FiCheckCircle size={25} className="md:w-5 md:h-5" />
+             </div>
+-            <p className="font-black uppercase text-xs tracking-[0.3em]">
++            <p className="font-black uppercase text-[10px] md:text-xs tracking-[0.3em]">
+               Premium Quality
+             </p>
+           </div>
++
+           <div className="flex flex-col items-center group">
+-            <div className="bg-emerald-500 p-8 rounded-[35px] mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
+-              <FiTruck size={40} />
++            <div className="bg-emerald-500 p-4 md:p-8 rounded-[25px] md:rounded-[35px] mb-3 md:mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
++              <FiTruck size={25} className="md:w-5 md:h-5" />
+             </div>
+-            <p className="font-black uppercase text-xs tracking-[0.3em]">
++            <p className="font-black uppercase text-[10px] md:text-xs tracking-[0.3em]">
+               Free Delivery
+             </p>
+           </div>
++
+           <div className="flex flex-col items-center group">
+-            <div className="bg-orange-500 p-8 rounded-[35px] mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
+-              <FiRefreshCw size={40} />
++            <div className="bg-orange-500 p-4 md:p-8 rounded-[25px] md:rounded-[35px] mb-3 md:mb-6 shadow-2xl group-hover:scale-110 transition duration-500">
++              <FiRefreshCw size={25} className="md:w-5 md:h-5" />
+             </div>
+-            <p className="font-black uppercase text-xs tracking-[0.3em]">
++            <p className="font-black uppercase text-[10px] md:text-xs tracking-[0.3em]">
+               30 Days Return
+             </p>
+           </div>
+         </div>
+       </section>
+ 
+-      {/* Background Animated Glows */}
++      {/* Background Animated Glows (UNCHANGED) */}
+       <div className="absolute inset-0 opacity-10 pointer-events-none">
+-        <div className="absolute top-40 left-0 w-[500px] h-[500px] bg-blue-500 rounded-full blur-[120px] animate-float"></div>
++        <div className="absolute top-40 left-0 w-[400px] md:w-[500px] h-[400px] md:h-[500px] bg-blue-500 rounded-full blur-[120px] animate-float"></div>
+         <div
+-          className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-500 rounded-full blur-[120px] animate-float"
++          className="absolute bottom-0 right-0 w-[400px] md:w-[500px] h-[400px] md:h-[500px] bg-indigo-500 rounded-full blur-[120px] animate-float"
+           style={{ animationDelay: "1s" }}
+         ></div>
+       </div>
+ 
+-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8">
+-        <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
++      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-20 pb-6">
++        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-16 mb-10 md:mb-20">
+           {/* Brand Info */}
+-          <div className="space-y-6">
+-            <h3 className="text-3xl font-black bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent uppercase tracking-tighter">
++          <div className="space-y-4 md:space-y-6">
++            <h3 className="text-xl md:text-3xl font-black bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent uppercase tracking-tighter">
+               Jumbo Xerox
+             </h3>
+-            <p className="text-gray-400 text-sm leading-relaxed text-justify">
++
++            <p className="text-gray-400 text-xs md:text-sm leading-relaxed text-justify">
+               Guntur's premier digital print destination. Whether you are a
+               student or a professional, we deliver quality prints right to your
+               doorstep.
+             </p>
+-            <div className="flex gap-4">
++
++            <div className="flex gap-3 md:gap-4">
+               {[FiFacebook, FiTwitter, FiInstagram].map((Icon, i) => (
+                 <a
+                   key={i}
+                   href="#"
+-                  className="w-12 h-12 rounded-2xl bg-gray-800/50 flex items-center justify-center hover:bg-blue-600 transition-all border border-gray-700 shadow-xl"
++                  className="w-9 h-9 md:w-12 md:h-12 rounded-2xl bg-gray-800/50 flex items-center justify-center hover:bg-blue-600 transition-all border border-gray-700 shadow-xl"
+                 >
+-                  <Icon size={20} />
++                  <Icon size={16} />
+                 </a>
+               ))}
+               <a
+                 href="https://wa.me/919441081125"
+-                className="w-12 h-12 rounded-2xl bg-gray-800/50 flex items-center justify-center hover:bg-green-600 transition-all border border-gray-700 shadow-xl"
++                className="w-9 h-9 md:w-12 md:h-12 rounded-2xl bg-gray-800/50 flex items-center justify-center hover:bg-green-600 transition-all border border-gray-700 shadow-xl"
+               >
+-                <FaWhatsapp size={22} />
++                <FaWhatsapp size={18} />
+               </a>
+             </div>
+           </div>
+ 
+           {/* Quick Links */}
+           <div>
+-            <h4 className="text-white font-black uppercase tracking-widest text-sm mb-8 border-l-4 border-blue-500 pl-3">
++            <h4 className="text-white font-black uppercase tracking-widest text-xs md:text-sm mb-6 md:mb-8 border-l-4 border-blue-500 pl-3">
+               Quick Links
+             </h4>
+-            <ul className="space-y-4 text-sm text-gray-400 font-medium">
++
++            <ul className="space-y-3 md:space-y-4 text-xs md:text-sm text-gray-400 font-medium">
+               {[
+                 { name: "Home", path: "/" },
+                 { name: "Quick Prints", path: "/quick-print" },
+@@ -112,28 +117,25 @@ export default function Footer() {
+             </ul>
+           </div>
+ 
+-          {/* Support Info */}
++          {/* Support */}
+           <div>
+-            <h4 className="text-white font-black uppercase tracking-widest text-sm mb-8 border-l-4 border-emerald-500 pl-3">
++            <h4 className="text-white font-black uppercase tracking-widest text-xs md:text-sm mb-6 md:mb-8 border-l-4 border-emerald-500 pl-3">
+               Support
+             </h4>
+-            <ul className="space-y-5 text-sm text-gray-400">
+-              <li className="flex items-center gap-4 group">
+-                <FiPhone
+-                  className="text-blue-400 group-hover:scale-125 transition-transform"
+-                  size={18}
+-                />{" "}
++
++            <ul className="space-y-4 md:space-y-5 text-xs md:text-sm text-gray-400">
++              <li className="flex items-center gap-3 md:gap-4 group">
++                <FiPhone size={16} />
+                 +91 9441081125
+               </li>
+-              <li className="flex items-center gap-4 group">
+-                <FiMail
+-                  className="text-emerald-400 group-hover:scale-125 transition-transform"
+-                  size={18}
+-                />{" "}
++
++              <li className="flex items-center gap-3 md:gap-4 group">
++                <FiMail size={16} />
+                 info@jumboxerox.com
+               </li>
+-              <li className="flex items-start gap-4 group">
+-                <FiMapPin className="text-orange-400 mt-1" size={18} />{" "}
++
++              <li className="flex items-start gap-3 md:gap-4 group">
++                <FiMapPin size={16} className="mt-1" />
+                 <span>
+                   9th Line, Arundulpet,
+                   <br />
+@@ -145,10 +147,11 @@ export default function Footer() {
+ 
+           {/* Legal */}
+           <div>
+-            <h4 className="text-white font-black uppercase tracking-widest text-sm mb-8 border-l-4 border-purple-500 pl-3">
++            <h4 className="text-white font-black uppercase tracking-widest text-xs md:text-sm mb-6 md:mb-8 border-l-4 border-purple-500 pl-3">
+               Legal
+             </h4>
+-            <ul className="space-y-4 text-sm text-gray-400 font-medium">
++
++            <ul className="space-y-3 md:space-y-4 text-xs md:text-sm text-gray-400 font-medium">
+               {[
+                 "About Us",
+                 "Privacy Policy",
+@@ -168,23 +171,23 @@ export default function Footer() {
+           </div>
+         </div>
+ 
+-        {/* Bottom Bar */}
+-        <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-8">
+-          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
++        {/* Bottom Bar (UNCHANGED CONTENT) */}
++        <div className="pt-6 md:pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-8">
++          <p className="text-gray-500 text-[9px] md:text-xs font-bold uppercase tracking-widest text-center md:text-left">
+             © 2026 New Cyber Shoppee Jumbo Xerox. All Rights Reserved.
+           </p>
+ 
+-          <div className="flex items-center gap-3 px-6 py-3 bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl animate-pulse-glow">
+-            <FiEye className="text-blue-400" size={20} />
+-            <span className="text-gray-400 text-xs font-black uppercase">
++          <div className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl animate-pulse-glow">
++            <FiEye className="text-blue-400" size={16} />
++            <span className="text-gray-400 text-[10px] md:text-xs font-black uppercase">
+               Visitors:
+             </span>
+-            <strong className="text-blue-400 text-lg font-black shimmer-text">
++            <strong className="text-blue-400 text-base md:text-lg font-black shimmer-text">
+               664
+             </strong>
+           </div>
+ 
+-          <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest">
++          <p className="text-[8px] md:text-[10px] text-gray-600 font-black uppercase tracking-widest text-center md:text-right">
+             Designed by WebnApp Studio
+           </p>
+         </div>
+diff --git a/frontend/src/pages/static/Home.jsx b/frontend/src/pages/static/Home.jsx
+index 0b058bc..19be0c2 100644
+--- a/frontend/src/pages/static/Home.jsx
++++ b/frontend/src/pages/static/Home.jsx
+@@ -119,18 +119,15 @@ const Home = () => {
+ 
+   return (
+     <div className="min-h-screen bg-white font-sans text-slate-700 overflow-x-hidden">
+-      <section className="relative w-full h-[450px] md:h-[550px] bg-slate-900 overflow-hidden">
++      <section className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-slate-900 overflow-hidden">
+         {heroImages.map((img, idx) => (
+-          <div
++          <img
+             key={idx}
+-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+-              idx === currentHero ? "opacity-93" : "opacity-0"
++            src={img}
++            alt="hero"
++            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${
++              idx === currentHero ? "opacity-100" : "opacity-0"
+             }`}
+-            style={{
+-              backgroundImage: `url(${img})`,
+-              backgroundSize: "cover",
+-              backgroundPosition: "center",
+-            }}
+           />
+         ))}
+ 
+-- 
+2.50.0.windows.2
+
