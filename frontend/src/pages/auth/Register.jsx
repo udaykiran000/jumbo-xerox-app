@@ -1,7 +1,6 @@
-import React, { useState, useContext, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,13 +15,17 @@ import {
   RefreshCcw,
   CheckCircle2,
 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { loginSuccess } from "../../redux/slices/authSlice";
 
 export default function Register() {
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
+  const dispatch = useDispatch();
 
-  // States
-  const [step, setStep] = useState(1); // 1: Form, 2: OTP
+  // Remove useContext(AuthContext)
+
+  // State variables
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -33,53 +36,41 @@ export default function Register() {
   });
   const [otpValue, setOtpValue] = useState("");
   const [otpTimer, setOtpTimer] = useState(0);
-  const timerRef = useRef(null);
 
   const { name, email, phone, password, confirmPassword } = formData;
 
-  // OTP Timer Logic
+  const onChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  // Timer Effect
   useEffect(() => {
+    let interval;
     if (otpTimer > 0) {
-      timerRef.current = setTimeout(() => setOtpTimer(otpTimer - 1), 1000);
+      interval = setInterval(() => setOtpTimer((prev) => prev - 1), 1000);
     }
-    return () => clearTimeout(timerRef.current);
+    return () => clearInterval(interval);
   }, [otpTimer]);
 
-  const onChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // Step 1: Request OTP
   const handleRegisterRequest = async (e) => {
-    e.preventDefault();
-    if (password !== confirmPassword) return toast.error("Passwords mismatch!");
-    if (phone.length < 10) return toast.error("Enter valid 10-digit mobile!");
+    if (e) e.preventDefault();
+    if (password !== confirmPassword) return toast.error("Passwords do not match");
+    if (phone.length < 10) return toast.error("Invalid phone number");
 
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/register-request", {
-        name,
-        email,
-        phone,
-        password,
-      });
+      const { data } = await api.post("/auth/register-request", { name, email, phone, password });
+      toast.success(`OTP sent to ${phone}`);
+      
+      // OTP Test Mode: Auto-fill
+      if (data.otp) {
+        toast.success(`TEST MODE: OTP ${data.otp}`, { icon: "🔐" });
+        setOtpValue(data.otp);
+      }
+
       setStep(2);
       setOtpTimer(60);
-
-      // DEV MODE: Auto-fill or show OTP
-      if (data.otp) {
-        toast.success(`DEV MODE: OTP Auto-filled: ${data.otp}`, {
-          duration: 6000,
-        });
-        console.log("DEV OTP:", data.otp);
-        setOtpValue(data.otp); // Auto-fill
-      } else {
-        toast.success("Verification code sent!");
-      }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Verification trigger failed",
-      );
+       toast.error(error.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -96,7 +87,10 @@ export default function Register() {
         otp: otpValue,
       });
       toast.success("Identity Verified. Welcome!");
-      login(data.token); // Auto-login using AuthContext
+      
+      // Dispatch Redux action
+      dispatch(loginSuccess(data.token));
+      navigate("/dashboard");
     } catch (error) {
       toast.error(error.response?.data?.message || "Invalid Code");
     } finally {
@@ -105,10 +99,10 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-20 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-20 relative overflow-hidden font-sans">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-200/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-200/40 rounded-full blur-[120px]" />
       </div>
 
       <motion.div
@@ -118,12 +112,12 @@ export default function Register() {
       >
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-slate-500 hover:text-white transition-colors mb-8 text-sm font-black uppercase tracking-widest"
+          className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors mb-8 text-sm font-black uppercase tracking-widest"
         >
           <ArrowLeft size={16} /> Back to home
         </Link>
 
-        <div className="bg-white/5 backdrop-blur-2xl p-8 md:p-10 rounded-[3rem] border border-white/10 shadow-2xl">
+        <div className="bg-white backdrop-blur-2xl p-8 md:p-10 rounded-[3rem] border border-slate-200 shadow-2xl">
           <AnimatePresence mode="wait">
             {step === 1 ? (
               <motion.div
@@ -133,10 +127,10 @@ export default function Register() {
                 exit={{ opacity: 0 }}
               >
                 <div className="text-center mb-10">
-                  <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-600/20">
+                  <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30">
                     <UserPlus size={32} className="text-white" />
                   </div>
-                  <h2 className="text-3xl font-black tracking-tighter mb-2 italic">
+                  <h2 className="text-3xl font-black tracking-tighter mb-2 italic text-slate-900">
                     CREATE ACCOUNT
                   </h2>
                   <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
@@ -192,7 +186,7 @@ export default function Register() {
                   <button
                     disabled={loading}
                     type="submit"
-                    className="w-full bg-blue-600 py-5 rounded-2xl font-black text-white shadow-xl shadow-blue-900/40 mt-4 flex items-center justify-center gap-2 group transition-all"
+                    className="w-full bg-blue-600 py-5 rounded-2xl font-black text-white shadow-xl shadow-blue-500/30 mt-4 flex items-center justify-center gap-2 group transition-all"
                   >
                     {loading ? (
                       <Loader2 className="animate-spin" />
@@ -212,21 +206,21 @@ export default function Register() {
                 animate={{ opacity: 1, x: 0 }}
               >
                 <div className="text-center space-y-6">
-                  <div className="bg-emerald-500/10 text-emerald-500 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto">
+                  <div className="bg-emerald-100/50 text-emerald-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto">
                     <ShieldCheck size={40} />
                   </div>
-                  <h3 className="text-2xl font-black italic tracking-tighter">
+                  <h3 className="text-2xl font-black italic tracking-tighter text-slate-900">
                     VERIFY MOBILE
                   </h3>
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
-                    Code sent to <span className="text-blue-400">{phone}</span>
+                    Code sent to <span className="text-blue-600">{phone}</span>
                   </p>
 
                   <input
                     type="text"
                     maxLength="6"
                     placeholder="••••••"
-                    className="w-full text-center text-4xl font-black tracking-[0.3em] py-6 bg-white/5 border border-white/10 rounded-2xl focus:border-blue-500 outline-none transition-all"
+                    className="w-full text-center text-4xl font-black tracking-[0.3em] py-6 bg-slate-50 border border-slate-200 rounded-2xl focus:border-blue-500 outline-none transition-all text-slate-900"
                     value={otpValue}
                     onChange={(e) =>
                       setOtpValue(e.target.value.replace(/\D/g, ""))
@@ -240,7 +234,7 @@ export default function Register() {
                     <button
                       disabled={otpTimer > 0}
                       onClick={handleRegisterRequest}
-                      className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1 disabled:opacity-30"
+                      className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1 disabled:opacity-30"
                     >
                       <RefreshCcw size={12} /> Resend
                     </button>
@@ -249,7 +243,7 @@ export default function Register() {
                   <button
                     disabled={loading || otpValue.length < 6}
                     onClick={handleFinalizeRegister}
-                    className="w-full bg-white text-slate-950 py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full bg-slate-900 text-white hover:bg-black py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
                     {loading ? (
                       <Loader2 className="animate-spin" />
@@ -259,7 +253,7 @@ export default function Register() {
                   </button>
                   <button
                     onClick={() => setStep(1)}
-                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-800"
                   >
                     Change Phone Number
                   </button>
@@ -283,11 +277,11 @@ const InputGroup = ({
   placeholder,
 }) => (
   <div className="space-y-1.5">
-    <label className="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-2">
+    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-2">
       {label}
     </label>
     <div className="relative group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-500 transition-colors">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
         {icon}
       </div>
       <input
@@ -297,7 +291,7 @@ const InputGroup = ({
         onChange={onChange}
         placeholder={placeholder}
         required
-        className="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3.5 pl-11 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all text-sm font-bold"
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3.5 pl-11 pr-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-bold placeholder:text-slate-400"
       />
     </div>
   </div>

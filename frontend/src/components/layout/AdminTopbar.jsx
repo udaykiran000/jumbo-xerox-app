@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -19,13 +19,15 @@ import {
   Menu,
   LogOut,
 } from "lucide-react";
-import { AuthContext } from "../../context/AuthContext";
+import { useDispatch, useSelector } from "react-redux";
+import { selectUser, logout } from "../../redux/slices/authSlice";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import toast from "react-hot-toast";
 
 const AdminTopbar = ({ onMenuClick }) => {
-  const { user, logout } = useContext(AuthContext);
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -279,15 +281,15 @@ const AdminTopbar = ({ onMenuClick }) => {
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors font-bold text-left"
                     >
-                      <AdminSettings size={16} /> Admin Settings
+                      <Settings size={16} /> Admin Settings
                     </button>
                     <div className="h-[1px] bg-white/5 my-2" />
-                    <button
-                      onClick={logout}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-colors font-bold text-left"
-                    >
-                      <LogOut size={16} /> Logout
-                    </button>
+                      <button
+                        onClick={() => dispatch(logout())}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 rounded-xl transition-colors font-bold text-left"
+                      >
+                        <LogOut size={16} /> Logout
+                      </button>
                   </motion.div>
                 )}
               </AnimatePresence>

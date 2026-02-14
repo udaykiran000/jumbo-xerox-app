@@ -1,7 +1,7 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import toast from "react-hot-toast";
-import { AuthContext } from "../../context/AuthContext";
+// import { AuthContext } from "../../context/AuthContext"; // Removed
 import {
   ShieldCheck,
   Key,
@@ -16,8 +16,11 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { useSelector } from "react-redux";
+import { selectUser } from "../../redux/slices/authSlice";
+
 export default function AdminSettings() {
-  const { user } = useContext(AuthContext);
+  const user = useSelector(selectUser);
 
   // Profile State
   const [profileData, setProfileData] = useState({

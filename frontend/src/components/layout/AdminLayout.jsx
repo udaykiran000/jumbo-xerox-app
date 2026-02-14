@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/AuthContext";
+// import { AuthContext } from "../../context/AuthContext"; // Removed
 import api from "../../services/api"; // Static Import
 import Breadcrumbs from "../common/Breadcrumbs";
 import {
@@ -24,14 +24,16 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDashboardStats, selectNotifications } from "../../redux/slices/dashboardSlice";
+import { selectUser, logout } from "../../redux/slices/authSlice";
 
 const AdminLayout = () => {
-  const { user, logout } = useContext(AuthContext);
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch(); // Removed duplicate
   const notifications = useSelector(selectNotifications);
 
   // Debugging route logs
@@ -68,7 +70,7 @@ const AdminLayout = () => {
   ];
 
   const handleLogout = () => {
-    logout();
+    dispatch(logout());
     navigate("/login");
   };
 
@@ -203,6 +205,14 @@ const AdminLayout = () => {
                     )}
                   </Link>
                 ))}
+                
+                {/* Mobile Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-colors mt-4"
+                >
+                  <LogOut size={18} /> Log Out
+                </button>
               </div>
             </motion.aside>
           </>

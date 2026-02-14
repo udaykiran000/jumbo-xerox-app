@@ -17,18 +17,12 @@ import {
   X,
   RefreshCw,
 } from "lucide-react";
-import { useDispatch } from "react-redux";
-import { fetchDashboardStats } from "../../redux/slices/dashboardSlice";
 
-const AdminShipments = () => {
+export default function AdminShipments() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedShipment, setSelectedShipment] = useState(null);
   const [trackingData, setTrackingData] = useState(null);
-  // Removed unused state vars: isDrawerOpen, searchTerm, shippingLoading (local var is enough or unused)
-  const [shippingLoading, setShippingLoading] = useState(false);
-
-  const dispatch = useDispatch();
 
   // Fetch Tracking Data when shipment is selected
   useEffect(() => {
@@ -50,65 +44,23 @@ const AdminShipments = () => {
   }, [selectedShipment]);
 
   useEffect(() => {
-    fetchOrders();
+    fetchShipmentOrders();
   }, []);
 
-  const fetchOrders = async () => {
+  const fetchShipmentOrders = async () => {
+    console.log("[DEBUG-SHIP] Fetching shipment ready orders...");
     try {
       const { data } = await api.get("/admin/orders");
-      // Filter for ALL PAID Delivery orders (to show pipeline)
-      const shipmentReady = data.orders.filter(
-        (o) =>
-          o.paymentStatus === "Paid" &&
-          o.deliveryMode === "Delivery",
-      );
-      setOrders(shipmentReady);
-      setLoading(false);
-    } catch (error) {
-      toast.error("Failed to fetch shipments");
-      setLoading(false);
-    }
-  };
-
-  const handleCreateShipment = async () => {
-    if (!selectedShipment) return;
-    
-    if (selectedShipment.shipmentId) {
-      toast.error("Shipment already created");
-      return;
-    }
-    setShippingLoading(true);
-    try {
-      console.log("Sending Create Request...");
-      const { data } = await api.post("/admin/shipment/create", {
-        orderId: selectedShipment._id,
-      });
-      toast.success(data.message);
-      
-      // Update Local State for Immediate UI Feedback
-      const updatedShipment = {
-           ...selectedShipment,
-           shipmentId: data.order.shipmentId,
-           awbNumber: data.order.awbNumber
-      };
-      
-      setSelectedShipment(updatedShipment);
-      
-      // Update Main List
-       setOrders((prev) =>
-        prev.map((o) =>
-          o._id === selectedShipment._id ? updatedShipment : o
+      // Filter orders that are either Paid or marked for Delivery
+      setOrders(
+        data.orders.filter(
+          (o) => o.deliveryMode === "Delivery"
         )
       );
-      
-      // Global Update: Refresh Badges Instantly
-      dispatch(fetchDashboardStats());
-      
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Creation Failed");
+    } catch (e) {
+      toast.error("Shipment data load failed");
     } finally {
-      setShippingLoading(false);
+      setLoading(false);
     }
   };
 
@@ -147,9 +99,7 @@ const AdminShipments = () => {
               <p className="text-[9px] font-black uppercase text-slate-400">
                 Shipped
               </p>
-              <h3 className="text-xl font-black">
-                {orders.filter(o => o.shipmentId).length}
-              </h3>
+              <h3 className="text-xl font-black">0</h3>
             </div>
             <div className="p-2 bg-emerald-50 text-emerald-500 rounded-xl">
               <CheckCircle2 size={18} />
@@ -160,9 +110,7 @@ const AdminShipments = () => {
               <p className="text-[9px] font-black uppercase text-slate-400">
                 Pending Shipment
               </p>
-              <h3 className="text-xl font-black">
-                 {orders.filter(o => !o.shipmentId).length}
-              </h3>
+              <h3 className="text-xl font-black">{orders.length}</h3>
             </div>
             <div className="p-2 bg-orange-50 text-orange-500 rounded-xl">
               <Clock size={18} />
@@ -298,8 +246,7 @@ const AdminShipments = () => {
                 </div>
 
                 <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100 flex items-center justify-between">
-                  {/* ... Existing Tracking Content ... */}
-                   <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4">
                     <div className="p-3 bg-white rounded-full text-blue-600 border border-blue-200">
                       <CheckCircle2 size={24} />
                     </div>
@@ -318,8 +265,7 @@ const AdminShipments = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* ... Shipment Info ... */}
-                   <div className="bg-[#2563eb] p-8 rounded-[2rem] text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden">
+                  <div className="bg-[#2563eb] p-8 rounded-[2rem] text-white space-y-6 shadow-xl shadow-blue-100 relative overflow-hidden">
                     <h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest">
                       <FileText size={16} /> Shipment Information
                     </h4>
@@ -407,15 +353,34 @@ const AdminShipments = () => {
               <div className="p-8 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
                 {!selectedShipment.shipmentId && (
                   <button
-                    onClick={handleCreateShipment}
-                    disabled={shippingLoading}
-                    className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed items-center gap-2 flex"
+                    onClick={async () => {
+                      try {
+                        console.log("Sending Create Request...");
+                        const { data } = await api.post("/admin/shipment/create", {
+                          orderId: selectedShipment._id,
+                        });
+                        console.log("Create Response:", data);
+                        
+                        toast.success("Shipment Generated!");
+                        
+                        // Update local state to show buttons immediately
+                        const updatedShipment = {
+                           ...selectedShipment,
+                           shipmentId: data.order.shipmentId,
+                           awbNumber: data.order.awbNumber
+                        };
+                        console.log("Updating State to:", updatedShipment);
+                        setSelectedShipment(updatedShipment);
+                        
+                        fetchShipmentOrders(); // Refresh list to update background
+                      } catch (e) {
+                         console.error("Create Failed:", e);
+                        toast.error("Failed to create shipment");
+                      }
+                    }}
+                    className="bg-blue-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-100"
                   >
-                    {shippingLoading ? (
-                       <>
-                         <Loader2 size={16} className="animate-spin" /> Creating...
-                       </>
-                    ) : "Generate Shipment ID"}
+                    Generate Shipment ID
                   </button>
                 )}
                 
@@ -447,6 +412,4 @@ const AdminShipments = () => {
       </AnimatePresence>
     </div>
   );
-};
-
-export default AdminShipments;
+}

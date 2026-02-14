@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
   Printer,
@@ -12,16 +12,18 @@ import {
   User,
   Settings,
 } from "lucide-react";
-import { AuthContext } from "../../context/AuthContext";
+import { useDispatch, useSelector } from "react-redux";
+import { selectUser, logout } from "../../redux/slices/authSlice";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, logout } = useContext(AuthContext);
+  const dispatch = useDispatch();
+  const user = useSelector(selectUser);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     console.log("[DEBUG-AUTH] User Logging out from Navbar...");
-    logout();
+    dispatch(logout());
     setIsOpen(false);
     navigate("/");
   };
