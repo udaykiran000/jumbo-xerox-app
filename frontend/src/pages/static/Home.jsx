@@ -119,18 +119,15 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-700 overflow-x-hidden">
-      <section className="relative w-full h-[450px] md:h-[550px] bg-slate-900 overflow-hidden">
+      <section className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-slate-900 overflow-hidden">
         {heroImages.map((img, idx) => (
-          <div
+          <img
             key={idx}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              idx === currentHero ? "opacity-93" : "opacity-0"
+            src={img}
+            alt="hero"
+            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${
+              idx === currentHero ? "opacity-100" : "opacity-0"
             }`}
-            style={{
-              backgroundImage: `url(${img})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
           />
         ))}
 

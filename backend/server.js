@@ -1,4 +1,4 @@
-require("dotenv").config()
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -14,8 +14,11 @@ app.use(express.json({ limit: "500mb" }));
 app.use(express.urlencoded({ limit: "500mb", extended: true }));
 
 // 2. Database Connection
+// { family: 4 } అనేది సేఫ్టీ కోసం ఉంచుతున్నాం, ఇది ప్రొడక్షన్ లో కూడా మంచిదే.
 mongoose
-  .connect(process.env.MONGO_URL)
+  .connect(process.env.MONGO_URL, {
+    family: 4, 
+  })
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log("❌ DB Error:", err));
 
@@ -29,7 +32,6 @@ app.use("/api/uploads", express.static(uploadsPath));
 app.use("/uploads", express.static(uploadsPath));
 
 // 4. Static Files (Frontend Build Path)
-
 const buildPath = path.join(__dirname, "..", "frontend", "dist");
 app.use(express.static(buildPath));
 
@@ -43,9 +45,7 @@ app.use("/api/payments", require("./routes/paymentRoutes"));
 app.use("/api/config", require("./routes/configRoutes"));
 
 // 6. Catch-all Middleware (EXPRESS 5 FIX)
-
 app.use((req, res, next) => {
-  
   if (req.path.startsWith("/api")) {
     return res.status(404).json({
       success: false,
@@ -53,10 +53,8 @@ app.use((req, res, next) => {
     });
   }
 
-  
   res.sendFile(path.join(buildPath, "index.html"), (err) => {
     if (err) {
-    
       next();
     }
   });
@@ -66,5 +64,5 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 // 8. Server Start
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
