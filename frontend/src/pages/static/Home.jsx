@@ -135,7 +135,6 @@ const Home = () => {
   const heroImages = [h1, h2, h3, h4, h5, h6, h7];
 
   return (
-<<<<<<< HEAD
     <div className="min-h-screen bg-white font-sans text-slate-700 overflow-x-hidden relative">
       
       {/* --- FLOATING BACKGROUND BLOBS --- */}
@@ -156,20 +155,6 @@ const Home = () => {
           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-slate-50/60 rounded-full blur-3xl"
         />
       </div>
-=======
-    <div className="min-h-screen bg-white font-sans text-slate-700 overflow-x-hidden">
-      <section className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-slate-900 overflow-hidden">
-        {heroImages.map((img, idx) => (
-          <img
-            key={idx}
-            src={img}
-            alt="hero"
-            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${
-              idx === currentHero ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        ))}
->>>>>>> 8e4207cbbbf7b09c203db10c0fd8493fd036ee1d
 
       {/* IMPROVED HERO SECTION WITH SWIPER */}
       <motion.section 
@@ -197,7 +182,7 @@ const Home = () => {
         </Swiper>
       </motion.section>
 
-      {/* STEP 3: BLUE ANNOUNCEMENT TICKER (Exact Screenshot Position) */}
+      {/* STEP 3: BLUE ANNOUNCEMENT TICKER */}
       <motion.section 
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -267,7 +252,6 @@ const Home = () => {
               className="flex flex-col items-center group cursor-pointer"
             >
               <div className="w-28 h-28 md:w-48 md:h-48 rounded-full overflow-hidden border-[4px] md:border-[6px] border-slate-50 shadow-2xl group-hover:border-indigo-100 transition-all duration-500 bg-slate-100 relative">
-                 {/* Shine Effect Wrapper */}
                  <div className="absolute inset-0 z-10 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 w-full h-full -translate-x-[150%] skew-x-[-25deg] group-hover:animate-shine" />
                 <img
                   src={cat.i}
@@ -380,9 +364,7 @@ const Home = () => {
                 className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:shadow-2xl transition-all duration-300 group cursor-pointer relative overflow-hidden"
               >
                 <div className="h-32 md:h-44 bg-slate-50 rounded-xl mb-4 overflow-hidden relative">
-                  {/* Shine Effect */}
                   <div className="absolute inset-0 z-10 bg-gradient-to-tr from-white/0 via-white/40 to-white/0 w-full h-full -translate-x-[150%] skew-x-[-25deg] group-hover:animate-shine" />
-                  
                   <img
                     src={item.i}
                     alt={item.n}
@@ -424,36 +406,4 @@ const Home = () => {
               navigation={true}
               loop={true}
               spaceBetween={20}
-              breakpoints={{
-                320: { slidesPerView: 1, spaceBetween: 10 },
-                640: { slidesPerView: 1, spaceBetween: 20 },
-                768: { slidesPerView: 2 },
-                1024: { slidesPerView: 4 },
-              }}
-              className="decor-swiper pb-10"
-            >
-              {[s1, s2, s3, s4, s5, s6].map((img, idx) => (
-                <SwiperSlide key={idx}>
-                  <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden group relative">
-                    {/* Shine Effect */}
-                    <div className="absolute inset-0 z-20 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 w-full h-full -translate-x-[150%] skew-x-[-25deg] group-hover:animate-shine" />
-                    <div className="h-48 md:h-64 overflow-hidden relative">
-                      <img
-                        src={img}
-                        alt="decor"
-                        className="w-full h-full object-cover group-hover:scale-110 transition duration-700"
-                      />
-                    </div>
-                  </div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-          </motion.div>
-        </div>
-      </section>
-    </div>
-  );
-};
-
-export default Home;
-// Trigger recompile
+              breakpoi
