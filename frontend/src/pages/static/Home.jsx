@@ -135,6 +135,7 @@ const Home = () => {
   const heroImages = [h1, h2, h3, h4, h5, h6, h7];
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-white font-sans text-slate-700 overflow-x-hidden relative">
       
       {/* --- FLOATING BACKGROUND BLOBS --- */}
@@ -155,6 +156,20 @@ const Home = () => {
           className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-slate-50/60 rounded-full blur-3xl"
         />
       </div>
+=======
+    <div className="min-h-screen bg-white font-sans text-slate-700 overflow-x-hidden">
+      <section className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-slate-900 overflow-hidden">
+        {heroImages.map((img, idx) => (
+          <img
+            key={idx}
+            src={img}
+            alt="hero"
+            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-1000 ${
+              idx === currentHero ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        ))}
+>>>>>>> 8e4207cbbbf7b09c203db10c0fd8493fd036ee1d
 
       {/* IMPROVED HERO SECTION WITH SWIPER */}
       <motion.section 
